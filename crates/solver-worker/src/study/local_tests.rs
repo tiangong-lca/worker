@@ -203,3 +203,16 @@ fn local_instance_budget_can_run_beyond_the_hosted_default() {
     assert_eq!(prepared.model.instances.len(), 66);
     assert_eq!(local::execute(&prepared).unwrap().g, vec![7.0]);
 }
+
+#[test]
+fn method_specific_absence_is_normal_and_does_not_make_local_scores_incomplete() {
+    let input = foreground_background();
+    let mut selected = methods();
+    selected.factors[0].clear();
+    let prepared = local::prepare(&serde_json::to_vec(&input).unwrap(), &input, &selected).unwrap();
+    assert!(prepared.coverage.is_empty());
+    let result = local::execute(&prepared).unwrap();
+    assert_eq!(result.g, vec![7.0]);
+    assert_eq!(result.h, vec![0.0]);
+    assert!(result.complete_lcia_scores);
+}

@@ -524,7 +524,9 @@ pub(super) fn compile_model(
             if let Some(f) = matches.first() {
                 ensure!(f.value.is_finite(), "study_nonfinite_factor");
                 c[row][column] = f.value;
-            } else {
+            } else if local_amount.is_none() {
+                // Historical Study replay preserves its coverage representation. Local Model
+                // calculation treats the verified method as sparse: undefined factors add no impact.
                 coverage.push(CoverageGap {
                     method: source.method_refs[row].clone(),
                     inventory_index: column,

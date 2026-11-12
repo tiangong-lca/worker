@@ -42,8 +42,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
-lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
+lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
+lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -676,4 +676,4 @@ Real integration requires the Database/Edge owned Study runtime migrations and a
 
 ## Independent local Model proof
 
-Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and factor gaps. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds and incomplete LCIA factor coverage must be disclosed. Source validation does not qualify an installed multi-platform engine or hosted API.
+Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and normal sparse method applicability. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds must be disclosed; normal absent method factors do not constitute incomplete scores. Source validation does not qualify an installed multi-platform engine or hosted API.

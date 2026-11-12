@@ -26,8 +26,8 @@ checkPaths:
   - docs/frontend-integration.md
   - docs/agents/contracts/scope-closure-memory-and-result-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
-lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
+lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
+lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
 related:
   - AGENTS.md
   - .docpact/config.yaml

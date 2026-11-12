@@ -19,8 +19,8 @@ checkPaths:
   - crates/solver-worker/src/bin/model_calculate.rs
   - docs/agents/contracts/study-compiler-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
-lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
+lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
+lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
 related:
   - study-p0-calculation-profile.md
   - ../repo-validation.md
@@ -260,13 +260,12 @@ A complete empty local inventory yields empty public inventory axes and zero
 impacts after the explicit activity system is solved. The sparse backend's
 positive-dimension requirement uses one private all-zero row in this case; it
 never creates a public Flow or masks missing inventory. Hosted Study retains its
-existing empty-axis admission rule. Missing factors on actual inventory axes
-remain coverage gaps, distinct from a matched factor whose value is zero.
+existing empty-axis admission rule. For this local profile, an absent factor in the complete verified method is a normal sparse method definition: the Flow makes no contribution to that method. It produces no coverage warning and does not make the score incomplete. Missing or corrupted method data still fails verification. Historical hosted Study coverage artifacts retain their recorded protocol semantics.
 
 The local executable reads an explicitly provided factor directory with the
 existing verified static loader, then invokes the shared compiler/core. No DB,
 queue, credentials, automatic provider selection, download or retry is required.
-The binary still builds in `solver-worker`; it is a thin entrypoint, not a newly
+`--describe` reports the input profile and resource defaults without loading data; `--check --static-cache <directory>` verifies the complete method cache and reports readiness without calculating or writing a Run. The binary still builds in `solver-worker`; it is a thin entrypoint, not a newly
 independent distribution package or hosted activation.
 
 Local `limits` fields are `maxInputBytes`, `maxDocuments`, `maxInstances`,
