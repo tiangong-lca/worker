@@ -301,6 +301,33 @@ pub fn prepare(
     );
     let (model, normalized_owned_bytes) =
         source::normalize(&source, bounds, bytes.len().saturating_mul(8))?;
+    compile_model(
+        bytes,
+        &source,
+        model,
+        normalized_owned_bytes,
+        methods,
+        bounds,
+        None,
+        started,
+    )
+}
+
+#[allow(
+    clippy::too_many_lines,
+    clippy::many_single_char_names,
+    clippy::too_many_arguments
+)]
+pub(super) fn compile_model(
+    bytes: &[u8],
+    source: &SourceInput,
+    model: NormalizedModel,
+    normalized_owned_bytes: usize,
+    methods: &VerifiedMethods,
+    bounds: &Bounds,
+    local_amount: Option<f64>,
+    started: Instant,
+) -> anyhow::Result<PreparedInput> {
     let mut ports = BTreeMap::new();
     for i in &model.instances {
         let p = Port {
@@ -339,9 +366,19 @@ pub fn prepare(
         .collect::<anyhow::Result<Vec<_>>>()?;
     let n = views.len();
     let mut axis = BTreeMap::new();
+    let mut axis_units = BTreeMap::new();
     for i in &model.instances {
         for e in &i.exchanges {
             if e.kind == "Elementary flow" {
+                let axis_key = (
+                    e.flow.id.clone(),
+                    e.flow.version.clone(),
+                    e.direction.clone(),
+                );
+                let units = (e.unit.clone(), e.unit_identity.clone());
+                if let Some(previous) = axis_units.insert(axis_key, units.clone()) {
+                    ensure!(previous == units, "study_inventory_unit_mismatch");
+                }
                 axis.insert(
                     (
                         e.flow.id.clone(),
@@ -357,8 +394,11 @@ pub fn prepare(
             }
         }
     }
-    // Core requires at least one biosphere row, including a legitimate zero-inventory model.
-    ensure!(!axis.is_empty(), "study_empty_inventory_unsupported");
+    // Local inputs can explicitly carry a complete empty inventory. Hosted Study admission stays unchanged.
+    ensure!(
+        !axis.is_empty() || local_amount.is_some(),
+        "study_empty_inventory_unsupported"
+    );
     let inventory_axes = axis.into_values().collect::<Vec<_>>();
     let m = inventory_axes.len();
     let k = methods.axes.len();
@@ -430,7 +470,13 @@ pub fn prepare(
         .iter()
         .position(|v| v.port == model.reference)
         .unwrap();
-    y[reference_index] = 1.0;
+    y[reference_index] = local_amount.unwrap_or(1.0);
+    ensure!(
+        y[reference_index].is_finite()
+            && y[reference_index] > 0.0
+            && y[reference_index] <= bounds.max_functional_unit_amount,
+        "local_functional_amount"
+    );
     if let Some(binding) = &source.study_binding {
         ensure!(
             !binding.study_revision_id.is_empty()
@@ -478,7 +524,9 @@ pub fn prepare(
             if let Some(f) = matches.first() {
                 ensure!(f.value.is_finite(), "study_nonfinite_factor");
                 c[row][column] = f.value;
-            } else {
+            } else if local_amount.is_none() {
+                // Historical Study replay preserves its coverage representation. Local Model
+                // calculation treats the verified method as sparse: undefined factors add no impact.
                 coverage.push(CoverageGap {
                     method: source.method_refs[row].clone(),
                     inventory_index: column,
@@ -502,13 +550,17 @@ pub fn prepare(
     ensure!(nnz <= bounds.max_nonzeros, "study_nnz_limit");
     let mut input = PreparedInput {
         schema_version: INPUT_SCHEMA.into(),
-        profile_id: PROFILE.into(),
+        profile_id: if local_amount.is_some() {
+            super::local::PROFILE.into()
+        } else {
+            PROFILE.into()
+        },
         compiler_version: COMPILER.into(),
         calculation_contract_ref: calc_ref(),
         source_hash: sha256(bytes),
         model_hash: String::new(),
         input_hash: None,
-        study_binding: source.study_binding,
+        study_binding: source.study_binding.clone(),
         model,
         numeric: NumericInput {
             views,
@@ -603,6 +655,13 @@ fn triplets(matrix: &[Vec<f64>]) -> anyhow::Result<Vec<SparseTriplet>> {
 pub fn execute(input: &PreparedInput) -> anyhow::Result<StudyResult> {
     let started = Instant::now();
     validate_execution(input)?;
+    execute_validated(input, started)
+}
+
+pub(super) fn execute_validated(
+    input: &PreparedInput,
+    started: Instant,
+) -> anyhow::Result<StudyResult> {
     let n = &input.numeric;
     let size = n.views.len();
     let rows = n.inventory_axes.len();
@@ -610,7 +669,9 @@ pub fn execute(input: &PreparedInput) -> anyhow::Result<StudyResult> {
     let data = ModelSparseData {
         model_version: Uuid::new_v4(),
         process_count: i32::try_from(size)?,
-        flow_count: i32::try_from(rows)?,
+        // The sparse backend needs positive dimensions. An empty local inventory uses
+        // an internal all-zero row only; no synthetic Flow enters the public axes/result.
+        flow_count: i32::try_from(rows.max(1))?,
         impact_count: i32::try_from(methods)?,
         technosphere_entries: triplets(&n.a)?,
         biosphere_entries: triplets(&n.b)?,
@@ -625,7 +686,11 @@ pub fn execute(input: &PreparedInput) -> anyhow::Result<StudyResult> {
         SolveOptions::default(),
     )?;
     let x = result.x.context("study_missing_x")?;
-    let g = result.g.context("study_missing_g")?;
+    let mut g = result.g.context("study_missing_g")?;
+    if rows == 0 {
+        ensure!(g.iter().all(|v| *v == 0.0), "local_empty_inventory_nonzero");
+        g.clear();
+    }
     let h = result.h.context("study_missing_h")?;
     ensure!(
         x.iter().chain(&g).chain(&h).all(|v| v.is_finite()),
@@ -646,7 +711,7 @@ pub fn execute(input: &PreparedInput) -> anyhow::Result<StudyResult> {
     );
     Ok(StudyResult {
         schema_version: RESULT_SCHEMA.into(),
-        profile_id: PROFILE.into(),
+        profile_id: input.profile_id.clone(),
         compiler_version: COMPILER.into(),
         calculation_contract_ref: calc_ref(),
         model_hash: input.model_hash.clone(),
@@ -666,11 +731,18 @@ pub fn execute(input: &PreparedInput) -> anyhow::Result<StudyResult> {
 
 pub(super) fn validate_execution(input: &PreparedInput) -> anyhow::Result<()> {
     input.limits.validate()?;
+    validate_execution_profile(input, PROFILE)
+}
+
+pub(super) fn validate_execution_profile(
+    input: &PreparedInput,
+    profile: &str,
+) -> anyhow::Result<()> {
     artifact_bytes(input)?;
     verify_identities(input)?;
     ensure!(
         input.schema_version == INPUT_SCHEMA
-            && input.profile_id == PROFILE
+            && input.profile_id == profile
             && input.compiler_version == COMPILER
             && input.calculation_contract_ref == calc_ref(),
         "study_execution_contract"
@@ -682,7 +754,7 @@ pub(super) fn validate_execution(input: &PreparedInput) -> anyhow::Result<()> {
     ensure!(
         size > 0
             && size <= input.limits.max_views
-            && rows > 0
+            && (rows > 0 || profile == super::local::PROFILE)
             && methods > 0
             && methods <= input.limits.max_methods,
         "study_execution_dimensions"

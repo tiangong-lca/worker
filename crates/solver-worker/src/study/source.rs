@@ -9,7 +9,7 @@ use anyhow::{Context, bail, ensure};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
-type Documents = BTreeMap<(String, String, String), Value>;
+pub(super) type Documents = BTreeMap<(String, String, String), Value>;
 fn text(value: &Value) -> anyhow::Result<String> {
     value
         .as_str()
@@ -184,7 +184,27 @@ pub(super) fn normalize(
             sha256: doc.sha256.clone(),
         });
     }
-    let model = lookup(&docs, "lifecyclemodel", &source.origin)?;
+    normalize_graph(
+        source,
+        &docs,
+        identities,
+        &BTreeMap::new(),
+        bounds,
+        base_owned_bytes,
+    )
+}
+
+/// Shared graph normalization; local projections never invent server state/owner receipts.
+#[allow(clippy::too_many_lines)]
+pub(super) fn normalize_graph(
+    source: &SourceInput,
+    docs: &Documents,
+    mut identities: Vec<SourceIdentity>,
+    backgrounds: &BTreeMap<(String, String), Vec<Exchange>>,
+    bounds: &Bounds,
+    base_owned_bytes: usize,
+) -> anyhow::Result<(NormalizedModel, usize)> {
+    let model = lookup(docs, "lifecyclemodel", &source.origin)?;
     let data = &model["lifeCycleModelDataSet"]["lifeCycleModelInformation"];
     let raw_instances = items(&data["technology"]["processes"]["processInstance"]);
     ensure!(
@@ -196,7 +216,13 @@ pub(super) fn normalize(
     let mut expanded_bytes = 0usize;
     for raw in &raw_instances {
         let process = reference(&raw["referenceToProcess"])?;
-        let size = encoded_size(lookup(&docs, "process", &process)?)?;
+        let size = if let Some(background) =
+            backgrounds.get(&(process.id.clone(), process.version.clone()))
+        {
+            encoded_size(background)?
+        } else {
+            encoded_size(lookup(docs, "process", &process)?)?
+        };
         expanded_bytes = expanded_bytes
             .checked_add(size)
             .context("study_source_expansion_overflow")?;
@@ -220,9 +246,25 @@ pub(super) fn normalize(
             "study_instance_identity"
         );
         let process = reference(&raw["referenceToProcess"])?;
-        let data = &lookup(&docs, "process", &process)?["processDataSet"];
+        let data = &lookup(docs, "process", &process)?["processDataSet"];
         let reference_exchange_id =
             text(&data["processInformation"]["quantitativeReference"]["referenceToReferenceFlow"])?;
+        if let Some(background) = backgrounds.get(&(process.id.clone(), process.version.clone())) {
+            count += background.len();
+            ensure!(count <= bounds.max_exchanges, "study_exchange_limit");
+            let mut exchanges = background.clone();
+            exchanges[0].id.clone_from(&reference_exchange_id);
+            for (index, exchange) in exchanges.iter_mut().enumerate().skip(1) {
+                exchange.id = format!("{reference_exchange_id}_inventory_{index}");
+            }
+            instances.push(Instance {
+                id,
+                process,
+                reference_exchange_id,
+                exchanges,
+            });
+            continue;
+        }
         let mut exchanges = Vec::new();
         let mut ids = BTreeSet::new();
         for raw in items(&data["exchanges"]["exchange"]) {
@@ -239,7 +281,7 @@ pub(super) fn normalize(
                 "study_exchange_direction"
             );
             let flow = reference(&raw["referenceToFlowDataSet"])?;
-            let (unit, unit_identity, kind) = unit(&docs, &flow)?;
+            let (unit, unit_identity, kind) = unit(docs, &flow)?;
             ensure!(
                 matches!(
                     kind.as_str(),
@@ -449,7 +491,7 @@ fn id_for(instance: &Instance) -> String {
     instance.id.clone()
 }
 
-fn encoded_size(value: &Value) -> anyhow::Result<usize> {
+fn encoded_size(value: &impl serde::Serialize) -> anyhow::Result<usize> {
     struct Counter(usize);
     impl std::io::Write for Counter {
         fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {

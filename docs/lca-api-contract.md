@@ -25,9 +25,9 @@ checkPaths:
   - docs/edge-function-integration.md
   - docs/frontend-integration.md
   - docs/agents/contracts/scope-closure-memory-and-result-contract.md
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 818b5e00a37f56637f6418ead692ab430c1fdbc1
-lastReviewedNote: "Worker #366: reviewed export of the original synthetic prepared/result/source bytes already hash-bound by the service fixture. Generator arithmetic, schema, runtime and earlier fixture bytes remain unchanged; these files grant no source or job authority. Worker #368: reviewed Linux missing-VmRSS exit reconciliation bounded by one sample period and the original deadline, cancellation polling, fail-closed other probe errors and kill/reap qualification. Numerical, public schema, source authority and operational admission boundaries remain unchanged. Combined review adopts exact Main f74dfdba1d0f8aa7b87930ca344b2213e21b5f05 into method source 818b5e00a37f56637f6418ead692ab430c1fdbc1; method structural N/W limits and separate actor/cohort/professional qualification remain in force."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
+lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
 related:
   - AGENTS.md
   - .docpact/config.yaml

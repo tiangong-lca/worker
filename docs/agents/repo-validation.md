@@ -41,9 +41,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 818b5e00a37f56637f6418ead692ab430c1fdbc1
-lastReviewedNote: "Worker #366: reviewed the hash-bound all-inventory complete-sixteen reachability limit and measured synthetic native capacity. Runtime, schemas, source pins, historical Run coverage and professional qualification remain unchanged. Worker #368: reviewed Linux missing-VmRSS exit reconciliation bounded by one sample period and the original deadline, cancellation polling, fail-closed other probe errors and kill/reap qualification. Numerical, public schema, source authority and operational admission boundaries remain unchanged. Combined review adopts exact Main f74dfdba1d0f8aa7b87930ca344b2213e21b5f05 into method source 818b5e00a37f56637f6418ead692ab430c1fdbc1; method structural N/W limits and separate actor/cohort/professional qualification remain in force."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
+lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -782,3 +782,74 @@ hash, shapes, artifact sizes, wall time and sampled RSS; its logged output is
 retained by the job. It also exercises cancellation/reaping. A passing component
 run does not activate an API or qualify actor/queue/Storage/report behavior,
 Windows service execution or byte-identical cross-platform numerical output.
+
+## Independent local Model proof
+
+Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and normal sparse method applicability. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds must be disclosed; normal absent method factors do not constitute incomplete scores. Source validation does not qualify an installed multi-platform engine or hosted API.
+
+### Local Model runtime packaging
+
+`scripts/package_model_runtime.py` produces the same local package format on
+macOS ARM64, Linux glibc x64/ARM64 and Windows x64. Use Python 3.10 or later and
+build `model_calculate` on the target host. Cross-compilation is not execution
+qualification. macOS Intel, Linux musl and Windows ARM64 are not supported.
+
+- macOS: use Xcode tools and SuiteSparse. The producer follows each Mach-O image's
+  declared runpaths/ancestor chain, relocates dependencies, removes developer
+  rpaths and ad-hoc signs the modified binaries.
+- Linux: install SuiteSparse, BLAS/LAPACK, a C toolchain, CMake, `pkg-config`,
+  `binutils` and `patchelf`. Build with `cargo build --locked --bin model_calculate`.
+  The producer copies the transitive non-glibc library closure into `bin/lib`,
+  replaces absolute dependency names and sets `$ORIGIN` runpaths on every image.
+  The operating system supplies glibc and its loader. Build on the oldest intended
+  glibc baseline and test on it; a newer build does not promise older glibc support.
+- Windows: use x64 Developer PowerShell (MSVC, `cl`, `dumpbin`), CMake and Rust's
+  `x86_64-pc-windows-msvc` toolchain. Install the dynamic
+  `suitesparse-umfpack:x64-windows` port; the qualification workflow uses reviewed
+  vcpkg 2026.10.16 / UMFPACK 6.3.8. Set `SUITESPARSE_LIB_DIR` to its `lib` directory
+  before `cargo build --locked --bin model_calculate`. Supply the corresponding
+  `bin` directory and x64 MSVC redistributable CRT directory via repeated
+  `--library-dir` arguments. The producer recursively copies imported DLLs beside
+  `bin/model_calculate.exe`. It never scans PATH or copies arbitrary System32
+  files; missing/ambiguous imports and wrong architectures fail.
+
+```bash
+python3 scripts/package_model_runtime.py --engine target/debug/model_calculate --static-cache /path/to/static-assets --output /new/model-package
+PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
+```
+
+On Windows, use `python`, the `.exe` engine name and the explicit DLL directories.
+`--notices <reviewed-directory>` includes third-party notices; automatically
+collected macOS notices are retained. Public redistribution still requires the
+complete native library license/source-offer review and release provenance.
+
+`manifest.json` and `runtime.tar.gz` contain a bounded regular-file inventory;
+CLI verifies its bytes internally. Readiness executes the packaged engine with
+only OS paths and without developer loader variables or business credentials.
+The output directory is claimed exclusively, its manifest is published last, and
+failure removes only owned staging/output directories. No existing output is
+replaced. The producer never uploads, installs dependencies or publishes a release.
+
+For executable numerical qualification, extract the producer's own archive into a
+new directory and run:
+
+```bash
+python3 scripts/qualify_model_runtime.py --engine /relocated/bin/model_calculate --static-cache /relocated/cache --output /new/qualification
+```
+
+The oracle uses two synthetic explicitly connected processes and the real fossil
+CO2 climate factor; independent expected inventory/impact amounts are 21 and 42
+for functional amounts 3 and 6. The receipt is evidence for that exact host only.
+For installation proof, install the package through CLI in empty state and repeat
+calculation in a clean environment without development libraries or network.
+
+Package tests run in `make qualification-test` / `make check` and the ordinary
+Linux CI job. The native host case compiles a transitive library chain, relocates
+it, removes the source tree and executes it. Other OS-specific cases are skipped,
+not represented as successful native qualification. Portable cases cover host
+admission, missing/ambiguous imports, exact inventories, symlinks, publication
+collisions and cleanup. `.github/workflows/model-runtime.yml` is a manually
+triggered four-host native build/package/numerical qualification workflow; it
+retains evidence and does not publish runtime releases. Its explicit public cache
+source is checked by the existing Worker cache contract. A workflow definition or
+successful compilation does not substitute for a completed native run.

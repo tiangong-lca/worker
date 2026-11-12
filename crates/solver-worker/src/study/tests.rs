@@ -195,7 +195,7 @@ fn self_reuse_and_input_reference() {
         ],
     );
     let p = prepare_source(&s);
-    assert_eq!(p.numeric.reference.pivot, -1.0);
+    assert_eq!(p.numeric.reference.pivot.to_bits(), (-1.0_f64).to_bits());
     assert_eq!(execute(&p).unwrap().g, vec![5.0]);
 }
 #[test]
@@ -929,8 +929,10 @@ fn normalization_preserves_finite_extremes_and_rejects_final_range_loss() {
     let value = normalized_amount(1e308, 1e-308, 1e-308).unwrap();
     assert!((value / 1e308 - 1.0).abs() < 1e-15);
     assert_eq!(
-        normalized_amount(f64::MIN_POSITIVE, f64::from_bits(1), f64::MIN_POSITIVE).unwrap(),
-        f64::from_bits(1)
+        normalized_amount(f64::MIN_POSITIVE, f64::from_bits(1), f64::MIN_POSITIVE)
+            .unwrap()
+            .to_bits(),
+        f64::from_bits(1).to_bits()
     );
     assert!(
         normalized_amount(f64::from_bits(1), 0.5, 1.0)
@@ -944,7 +946,12 @@ fn normalization_preserves_finite_extremes_and_rejects_final_range_loss() {
             .to_string()
             .contains("overflow")
     );
-    assert_eq!(normalized_amount(f64::from_bits(1), 0.0, 1.0).unwrap(), 0.0);
+    assert_eq!(
+        normalized_amount(f64::from_bits(1), 0.0, 1.0)
+            .unwrap()
+            .to_bits(),
+        0.0_f64.to_bits()
+    );
 }
 
 #[test]
@@ -1459,3 +1466,6 @@ pub(super) fn method_assessment_source_fixture() -> SourceInput {
     }];
     source
 }
+
+#[path = "local_tests.rs"]
+mod local_tests;

@@ -16,10 +16,11 @@ checkPaths:
   - crates/solver-core/src/service.rs
   - crates/solver-worker/src/study/**
   - crates/solver-worker/src/bin/study_compile.rs
+  - crates/solver-worker/src/bin/model_calculate.rs
   - docs/agents/contracts/study-compiler-contract.md
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 818b5e00a37f56637f6418ead692ab430c1fdbc1
-lastReviewedNote: "Worker #366: reviewed export of the original synthetic prepared/result/source bytes already hash-bound by the service fixture. Generator arithmetic, schema, runtime and earlier fixture bytes remain unchanged; these files grant no source or job authority. Worker #368: reviewed Linux missing-VmRSS exit reconciliation bounded by one sample period and the original deadline, cancellation polling, fail-closed other probe errors and kill/reap qualification. Numerical, public schema, source authority and operational admission boundaries remain unchanged. Combined review adopts exact Main f74dfdba1d0f8aa7b87930ca344b2213e21b5f05 into method source 818b5e00a37f56637f6418ead692ab430c1fdbc1; method structural N/W limits and separate actor/cohort/professional qualification remain in force."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
+lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
 related:
   - study-p0-calculation-profile.md
   - ../repo-validation.md
@@ -232,3 +233,66 @@ relabeled, globally replaced or silently recanonicalized.
 
 
 The owned runtime is specified separately in [study-runtime-contract.md](study-runtime-contract.md). Study artifact/source/IPC decoding uses the bounded exact-f64 codec in `study/json.rs`; ordinary serde_json float parsing is not changed. Decimal normalized matrices and nested allocation numbers must retain original f64 bits across serialization, decoding and semantic rehash, as well as pass integer-only fixtures.
+
+## Independent local Model input
+
+`study::local` and `model_calculate` provide the local `lca.model-local.v1`
+profile. The editable `lca.model-input.v1` document contains `model`, canonical
+supporting `datasets`, optional complete `backgrounds`, exact `methods`, positive
+functional `amount` (default 1), explicit `cutoffs` and optional `limits`. It
+contains no actor, server state, StudyBinding or caller-maintained hashes. This
+local profile is not accepted by hosted Study execution or its prepared replay
+contract; it grants no server authorization or publication authority.
+
+The resolver supplies only Model-declared Process instances and numerical
+Flow/FlowProperty/UnitGroup dependencies. Each selected background is the complete
+Process `get-result --kind lci` artifact, with source Process identity, result
+identity, reference quantity/unit and all signed elementary rows. Local execution
+does not consult live publication state. The aggregate replaces the original
+Process exchanges; it is scaled against its published reference quantity and is
+never expanded or allocated a second time. Duplicate/mismatched/incomplete
+backgrounds, unused backgrounds, ambiguous connections and conflicting units on
+a shared inventory axis fail explicitly. Source metadata does not link providers.
+Location/function group rows use the existing nonregional Flow/version/direction
+axes; provenance remains in the Run's original input.
+
+A complete empty local inventory yields empty public inventory axes and zero
+impacts after the explicit activity system is solved. The sparse backend's
+positive-dimension requirement uses one private all-zero row in this case; it
+never creates a public Flow or masks missing inventory. Hosted Study retains its
+existing empty-axis admission rule. For this local profile, an absent factor in the complete verified method is a normal sparse method definition: the Flow makes no contribution to that method. It produces no coverage warning and does not make the score incomplete. Missing or corrupted method data still fails verification. Historical hosted Study coverage artifacts retain their recorded protocol semantics.
+
+The local executable reads an explicitly provided factor directory with the
+existing verified static loader, then invokes the shared compiler/core. No DB,
+queue, credentials, automatic provider selection, download or retry is required.
+`--describe` reports the input profile and resource defaults without loading data; `--check --static-cache <directory>` verifies the complete method cache and reports readiness without calculating or writing a Run. The binary builds in `solver-worker` as a thin entrypoint. The local package producer
+`scripts/package_model_runtime.py` bundles a target-native executable, its relocated
+native dependency closure and verified method assets for CLI installation on
+macOS ARM64, Linux glibc x64/ARM64 and Windows x64. Windows uses
+`bin/model_calculate.exe`; Unix uses `bin/model_calculate`. The input, Run and
+scientific contracts are identical across targets; native qualification is required
+separately for each platform. This
+package does not activate hosted execution.
+
+Local `limits` fields are `maxInputBytes`, `maxDocuments`, `maxInstances`,
+`maxViews`, `maxExchanges`, `maxDenseCells`, `maxArtifactBytes`, `maxMemoryBytes`
+and `timeoutMs`. Defaults are respectively 4194304, 512, 64, 128, 4096, 131072,
+4194304, 268435456 and 30000. Positive values may exceed the hosted Study ceilings;
+size budgets must fit the target's signed pointer integer and timeout fits u64.
+Checked matrix dimensions, safe allocations and scientific rules still apply.
+The local nonzero budget follows `maxDenseCells`; at most 25 methods and functional
+amount at most 1e12 remain supported. Unsupported fields fail rather than being
+silently ignored. Memory estimates exclude static-loader/native-library RSS;
+phase time checks are not a process termination mechanism. The caller must bound
+and reap the complete child process, including factor preload.
+
+`--input`, `--static-cache` and `--output-dir` are explicit binary arguments.
+`--max-input-bytes` bounds initial file acquisition (default 4194304); the CLI
+passes the prepared input's selected budget. The output directory must be new.
+Only after numerical success are input, prepared matrices/axes, result and compact
+summary published as `input.json`, `prepared.json`, `result.json`, `summary.json`.
+The input is the actual bytes consumed, the summary records the engine package
+version and result completeness, and internal prepared identities are generated
+automatically. Failed publication can leave an incomplete owned directory; retain
+it for diagnosis and use a new directory for a new calculation. Existing results
+are never overwritten or invalidated by later online changes.

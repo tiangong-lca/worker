@@ -239,9 +239,18 @@ fn uncertain_uniform_moments_replay_and_empirical_dependence() {
 }
 #[test]
 fn statistics_small_n_and_type7_reference() {
-    assert_eq!(quantile(&[2.0], 0.025).unwrap(), 2.0);
-    assert_eq!(quantile(&[0.0, 10.0], 0.25).unwrap(), 2.5);
-    assert_eq!(quantile(&[-10.0, -2.0, 0.0, 20.0], 0.5).unwrap(), -1.0);
+    assert_eq!(
+        quantile(&[2.0], 0.025).unwrap().to_bits(),
+        2.0_f64.to_bits()
+    );
+    assert_eq!(
+        quantile(&[0.0, 10.0], 0.25).unwrap().to_bits(),
+        2.5_f64.to_bits()
+    );
+    assert_eq!(
+        quantile(&[-10.0, -2.0, 0.0, 20.0], 0.5).unwrap().to_bits(),
+        (-1.0_f64).to_bits()
+    );
     assert!(quantile(&[], 0.5).is_err());
     let mut f = fixture("single", None, Some(2.0));
     uncertainty(

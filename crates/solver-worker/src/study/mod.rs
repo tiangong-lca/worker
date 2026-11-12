@@ -23,6 +23,7 @@ pub mod runtime_preflight;
 
 pub mod json;
 
+pub mod local;
 pub mod method_assessment;
 pub mod method_assessment_contracts;
 pub mod method_runtime_contracts;

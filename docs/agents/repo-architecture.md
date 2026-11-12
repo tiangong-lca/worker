@@ -36,9 +36,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 818b5e00a37f56637f6418ead692ab430c1fdbc1
-lastReviewedNote: "Worker #366: reviewed the hash-bound all-inventory complete-sixteen reachability limit and measured synthetic native capacity. Runtime, schemas, source pins, historical Run coverage and professional qualification remain unchanged. Worker #368: reviewed Linux missing-VmRSS exit reconciliation bounded by one sample period and the original deadline, cancellation polling, fail-closed other probe errors and kill/reap qualification. Numerical, public schema, source authority and operational admission boundaries remain unchanged. Combined review adopts exact Main f74dfdba1d0f8aa7b87930ca344b2213e21b5f05 into method source 818b5e00a37f56637f6418ead692ab430c1fdbc1; method structural N/W limits and separate actor/cohort/professional qualification remain in force."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
+lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -298,3 +298,7 @@ This repository has a versioned local `pre-push` hook under `.githooks/pre-push`
 ### Study owned runtime
 
 `study::runtime` branches from the existing calculator solver queue, using service-owned source/read/completion RPCs and private Study Storage. Separate default-off method jobs use `method_runtime_contracts` and supervised method native execution; evidence recording and method scalars remain distinct from professional approval. `study_native` isolates preload/compile/solve; `runtime_process` supervises kill/reap and sampled RSS. Scenario uses frozen base factors and inherited base overrides; no live factor/background reload. See [runtime authority, cleanup and qualification](contracts/study-runtime-contract.md).
+
+## Local Model calculation adapter
+
+`study/local.rs` adapts editable canonical Model inputs and explicit aggregated backgrounds into the existing graph/compiler/core. `bin/model_calculate.rs` loads verified local factors and writes an independent Run. Local runtime budgets do not redefine hosted Study bounds or authorization. The [compiler contract](contracts/study-compiler-contract.md#independent-local-model-input) owns the local input and scientific boundary; `scripts/package_model_runtime.py` owns native package production, with Linux/Windows dependency relocation in `scripts/model_native_platforms.py` and independent numerical qualification in `scripts/qualify_model_runtime.py`, while CLI owns local installation and configuration. Shared compiler/core behavior remains independent of installation.

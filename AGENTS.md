@@ -42,9 +42,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 818b5e00a37f56637f6418ead692ab430c1fdbc1
-lastReviewedNote: "Worker #366: reviewed the hash-bound all-inventory complete-sixteen reachability limit and measured synthetic native capacity. Runtime, schemas, source pins, historical Run coverage and professional qualification remain unchanged. Worker #368: reviewed Linux missing-VmRSS exit reconciliation bounded by one sample period and the original deadline, cancellation polling, fail-closed other probe errors and kill/reap qualification. Numerical, public schema, source authority and operational admission boundaries remain unchanged. Combined review adopts exact Main f74dfdba1d0f8aa7b87930ca344b2213e21b5f05 into method source 818b5e00a37f56637f6418ead692ab430c1fdbc1; method structural N/W limits and separate actor/cohort/professional qualification remain in force."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
+lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

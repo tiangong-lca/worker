@@ -1,0 +1,94 @@
+name: Local Model native qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-15
+            platform: darwin-arm64
+          - runner: windows-2025
+            platform: win32-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: tiangong-lca/platform
+          ref: 69753a4bc9a42649dc6f8d42f430e6a785d10ae2
+          path: method-cache
+          sparse-checkout: public/lciamethods
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux native build tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libsuitesparse-dev libopenblas-dev liblapack-dev pkg-config cmake patchelf
+      - name: Install Apple Silicon native build tools
+        if: runner.os == 'macOS'
+        run: brew install suite-sparse pkg-config cmake
+      - name: Build, package and relocate on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
+          cargo build --locked --bin model_calculate
+          python3 scripts/package_model_runtime.py --engine target/debug/model_calculate --static-cache method-cache/public --output model-package
+          mkdir installed
+          tar -xzf model-package/runtime.tar.gz -C installed
+          python3 scripts/qualify_model_runtime.py --engine installed/bin/model_calculate --static-cache installed/cache --output qualification
+      - uses: actions/checkout@v7
+        if: runner.os == 'Windows'
+        with:
+          repository: microsoft/vcpkg
+          ref: 5d4a3dc90c0b3773f3bac81bf41297b54328f471 # 2026.10.16
+          path: native-vcpkg
+          persist-credentials: false
+      - name: Build, package and relocate on Windows x64
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          & "$vs\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          & .\native-vcpkg\bootstrap-vcpkg.bat -disableMetrics
+          & .\native-vcpkg\vcpkg.exe install suitesparse-umfpack:x64-windows
+          $native = Join-Path $pwd 'native-vcpkg\installed\x64-windows'
+          $env:SUITESPARSE_LIB_DIR = Join-Path $native 'lib'
+          $env:PYTHONPATH = 'scripts'
+          python -m unittest scripts/test_package_model_runtime.py
+          cargo build --locked --bin model_calculate
+          $crt = Get-ChildItem (Join-Path $env:VCToolsRedistDir 'x64') -Directory -Filter 'Microsoft.VC*.CRT'
+          if ($crt.Count -ne 1) { throw 'Expected one x64 MSVC redistributable directory' }
+          New-Item -ItemType Directory notices
+          Get-ChildItem "$native\share" -Recurse -File -Filter copyright | ForEach-Object { Copy-Item $_.FullName (Join-Path 'notices' ($_.Directory.Name + '-LICENSE.txt')) }
+          python scripts/package_model_runtime.py --engine target/debug/model_calculate.exe --library-dir "$native\bin" --library-dir $crt.FullName --static-cache method-cache/public --output model-package --notices notices
+          New-Item -ItemType Directory installed
+          tar -xzf model-package/runtime.tar.gz -C installed
+          python scripts/qualify_model_runtime.py --engine installed/bin/model_calculate.exe --static-cache installed/cache --output qualification
+      - name: Preserve internal qualification evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: model-runtime-${{ matrix.platform }}-qualification
+          path: |
+            model-package/manifest.json
+            qualification/qualification.json
+          if-no-files-found: error
+          retention-days: 14

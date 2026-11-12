@@ -20,9 +20,9 @@ checkPaths:
   - crates/solver-worker/src/queue.rs
   - crates/solver-worker/src/storage.rs
   - docs/agents/contracts/study-runtime-contract.md
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 818b5e00a37f56637f6418ead692ab430c1fdbc1
-lastReviewedNote: "Worker #366: reviewed Unicode evidence text/schema parity, independent UTF-8 body ceiling and retained config.v1 semantics; source/lease/runtime/report and complete industry/professional qualification remain independently required. Worker #368: reviewed Linux missing-VmRSS exit reconciliation bounded by one sample period and the original deadline, cancellation polling, fail-closed other probe errors and kill/reap qualification. Numerical, public schema, source authority and operational admission boundaries remain unchanged. Combined review adopts exact Main f74dfdba1d0f8aa7b87930ca344b2213e21b5f05 into method source 818b5e00a37f56637f6418ead692ab430c1fdbc1; method structural N/W limits and separate actor/cohort/professional qualification remain in force."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - study-compiler-contract.md
   - ../../lca-api-contract.md
