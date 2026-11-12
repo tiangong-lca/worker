@@ -37,8 +37,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
-lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -66,8 +66,18 @@ The runtime solves sparse systems asynchronously and keeps heavy compute out of 
 contribution/comparison facts through the existing Study native runtime. Its
 config/facts schemas are separate from P1 model/input/calculation identities;
 report authorization, persistence and signed export stay with their owners.
+`study/analysis_advanced.rs` independently recompiles frozen-source OAT and bounded
+uncertainty profiles under a single aggregate budget. The separate v2 schemas
+and native action do not operationally admit a hosted profile.
 
 ## Core Solver Invariants
+
+The [source-bound method assessment](contracts/study-method-assessment-contract.md)
+is an independent family with an offline candidate and a separately gated
+private method-job adapter. Its pinned PCR module and verified frozen source/C
+evidence do not grant job registration, actor/source rights or professional
+approval. Public API/report adoption and actual complete-industry-study
+acceptance remain separately qualified.
 
 The [Study P0 profile](contracts/study-p0-calculation-profile.md) owns an offline
 qualification baseline and common rational fixtures under
@@ -287,7 +297,7 @@ This repository has a versioned local `pre-push` hook under `.githooks/pre-push`
 
 ### Study owned runtime
 
-`study::runtime` branches from the existing calculator solver queue, using service-owned source/read/completion RPCs and private Study Storage. `study_native` isolates preload/compile/solve; `runtime_process` supervises kill/reap and sampled RSS. Scenario uses frozen base factors and inherited base overrides; no live factor/background reload. See [runtime authority, cleanup and qualification](contracts/study-runtime-contract.md).
+`study::runtime` branches from the existing calculator solver queue, using service-owned source/read/completion RPCs and private Study Storage. Separate default-off method jobs use `method_runtime_contracts` and supervised method native execution; evidence recording and method scalars remain distinct from professional approval. `study_native` isolates preload/compile/solve; `runtime_process` supervises kill/reap and sampled RSS. Scenario uses frozen base factors and inherited base overrides; no live factor/background reload. See [runtime authority, cleanup and qualification](contracts/study-runtime-contract.md).
 
 ## Local Model calculation adapter
 

@@ -21,8 +21,8 @@ checkPaths:
   - docs/edge-function-integration.md
   - docs/review-quality-diagnostic-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
-lastReviewedNote: 'Worker #370: reviewed local-only Model profile separation; frontend hosted job, authorization and result consumption contracts are unchanged.'
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - AGENTS.md
   - .docpact/config.yaml

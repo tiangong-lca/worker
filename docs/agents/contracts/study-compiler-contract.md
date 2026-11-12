@@ -19,8 +19,8 @@ checkPaths:
   - crates/solver-worker/src/bin/model_calculate.rs
   - docs/agents/contracts/study-compiler-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
-lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - study-p0-calculation-profile.md
   - ../repo-validation.md

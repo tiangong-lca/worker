@@ -43,8 +43,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
-lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -80,6 +80,7 @@ Start here when the task may change what the compute stack does.
 | `README.md` | repo landing context, operator setup, and runtime overview | machine-readable routing or lint semantics |
 | `docs/lca-api-contract.md` | shared jobs/results/payload/status contract for consumers | branch policy, proof matrix, or edge/frontend implementation details |
 | `docs/agents/contracts/study-runtime-contract.md` | owned Study source/preparation/Run handlers, private RPC/artifact/child protocols and qualification boundaries | actor/API permissions, automatic deployment or scientific certification |
+| `docs/agents/contracts/study-method-assessment-contract.md` | independent pinned source-module assessment, bounded machine predicates, evidence/catalog and separately gated method runtime; actual hosted/consumer qualification remains separately required | actor authorization, report disclosure, conformity, scientific or business approval |
 | `docs/agents/contracts/study-analysis-contract.md` | frozen-result contribution/comparison facts, config/numeric codec, bounded analysis job and evidence limits | scientific ranking, report persistence, disclosure authorization or export signing |
 | `docs/agents/contracts/study-compiler-contract.md` | bounded explicit Study source compiler, frozen model/input/result formats and local native executor; hosted job/source admission remains W06 | API authorization, source-export issuer or business/scientific qualification |
 | `docs/agents/contracts/study-p0-calculation-profile.md` | offline Study P0 profile, opaque numerical identity reference, common benchmark and pilot qualification boundaries | production Study compiler/API, dataset authorization or scientific certification |

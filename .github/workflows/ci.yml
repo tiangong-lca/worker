@@ -29,6 +29,8 @@ jobs:
         run: python3 -m unittest scripts/test_validate_lcia_targets.py
       - name: Study P0 independent qualification oracle
         run: make study-p0-check
+      - name: Study method independent Decimal oracle
+        run: make study-method-check
       - name: Install SuiteSparse dependencies
         run: sudo apt-get update && sudo apt-get install -y libsuitesparse-dev libopenblas-dev liblapack-dev pkg-config postgresql-client patchelf
       - name: Local Model package contract tests
@@ -56,6 +58,17 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: Test
         run: cargo test --workspace --all-features
+      - name: Study advanced native component qualification
+        env:
+          RUST_TEST_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: |
+          cargo test --locked -p solver-worker --lib linux_exit_rss_race_reconciles_actual_child -- --ignored --nocapture
+          cargo build --locked -p solver-worker --bin study_native
+          STUDY_NATIVE_BINARY="$PWD/target/debug/study_native" \
+            STUDY_ADVANCED_QUALIFICATION_RECEIPT="$RUNNER_TEMP/study-advanced-component.json" \
+            cargo test --locked -p solver-worker --lib advanced_native_capacity_and_running_cancellation -- --ignored --nocapture
       - name: Queue transport fault recovery
         env:
           WORKER_CLAIM_TEST_PORT: "5432"

@@ -50,6 +50,8 @@ struct JobRequest {
     run_id: Option<Uuid>,
     #[serde(default)]
     analysis_id: Option<Uuid>,
+    #[serde(default)]
+    assessment_id: Option<Uuid>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("study_completion_outcome_unknown")]
@@ -82,7 +84,12 @@ struct OrphanReceipt {
 pub fn handles(kind: &str) -> bool {
     matches!(
         kind,
-        "study.source_acquire" | "study.model_prepare" | "study.run" | "study.analysis"
+        "study.source_acquire"
+            | "study.model_prepare"
+            | "study.run"
+            | "study.analysis"
+            | "study.analysis_advanced"
+            | "study.method_assessment"
     )
 }
 fn resource_type(kind: &str) -> anyhow::Result<&'static str> {
@@ -90,7 +97,8 @@ fn resource_type(kind: &str) -> anyhow::Result<&'static str> {
         "study.source_acquire" => Ok("modelSourceAcquisition"),
         "study.model_prepare" => Ok("modelPreparation"),
         "study.run" => Ok("run"),
-        "study.analysis" => Ok("analysis"),
+        "study.analysis" | "study.analysis_advanced" => Ok("analysis"),
+        "study.method_assessment" => Ok("methodAssessment"),
         _ => anyhow::bail!("study_job_kind"),
     }
 }
@@ -102,6 +110,19 @@ fn request(job: &WorkerJob) -> anyhow::Result<(JobRequest, Uuid)> {
         "study_job_schema"
     );
     let value: JobRequest = serde_json::from_value(job.payload.clone())?;
+    if job.job_kind == super::method_runtime_contracts::JOB_KIND {
+        // A method request has precisely three fields; old-family known optional fields
+        // cannot be smuggled into this separate payload, even with null values.
+        let _: super::method_runtime_contracts::JobRequest =
+            serde_json::from_value(job.payload.clone())?;
+        ensure!(!value.study_id.is_nil(), "study_job_subject");
+    } else {
+        // Preserve the previous closed payload semantics for all retained job kinds.
+        ensure!(
+            job.payload.get("assessmentId").is_none(),
+            "study_job_subject"
+        );
+    }
     ensure!(
         value.schema_version == job.payload_schema_version && job.requested_by.is_some(),
         "study_job_actor_or_schema"
@@ -111,6 +132,7 @@ fn request(job: &WorkerJob) -> anyhow::Result<(JobRequest, Uuid)> {
         value.preparation_id,
         value.run_id,
         value.analysis_id,
+        value.assessment_id,
     ];
     ensure!(
         ids.iter().filter(|v| v.is_some()).count() == 1,
@@ -120,9 +142,13 @@ fn request(job: &WorkerJob) -> anyhow::Result<(JobRequest, Uuid)> {
         "study.source_acquire" => value.acquisition_id,
         "study.model_prepare" => value.preparation_id,
         "study.run" => value.run_id,
+        "study.method_assessment" => value.assessment_id,
         _ => value.analysis_id,
     }
     .context("study_job_subject")?;
+    if job.job_kind == super::method_runtime_contracts::JOB_KIND {
+        ensure!(!subject.is_nil(), "study_job_subject");
+    }
     Ok((value, subject))
 }
 fn input_rpc(kind: &str) -> anyhow::Result<&'static str> {
@@ -131,6 +157,8 @@ fn input_rpc(kind: &str) -> anyhow::Result<&'static str> {
         "study.model_prepare" => Ok("svc_study_model_preparation_read_input_v1"),
         "study.run" => Ok("svc_study_run_read_input_v1"),
         "study.analysis" => Ok("svc_study_analysis_read_input_v1"),
+        "study.analysis_advanced" => Ok("svc_study_analysis_advanced_read_input_v1"),
+        "study.method_assessment" => Ok(super::method_runtime_contracts::READ_INPUT_RPC),
         _ => anyhow::bail!("study_job_kind"),
     }
 }
@@ -140,6 +168,8 @@ fn completion_rpc(kind: &str) -> anyhow::Result<&'static str> {
         "study.model_prepare" => Ok("svc_study_model_preparation_complete_v1"),
         "study.run" => Ok("svc_study_run_complete_v1"),
         "study.analysis" => Ok("svc_study_analysis_complete_v1"),
+        "study.analysis_advanced" => Ok("svc_study_analysis_advanced_complete_v1"),
+        "study.method_assessment" => Ok(super::method_runtime_contracts::COMPLETE_RPC),
         _ => anyhow::bail!("study_job_kind"),
     }
 }
@@ -219,7 +249,11 @@ async fn task_rpc(
     }
     Ok(response["data"].clone())
 }
-fn validate_location(location: &PrivateArtifact, study: Uuid, kind: &str) -> anyhow::Result<()> {
+pub(super) fn validate_location(
+    location: &PrivateArtifact,
+    study: Uuid,
+    kind: &str,
+) -> anyhow::Result<()> {
     ensure!(
         location.study_id == study
             && location.storage_bucket == BUCKET
@@ -387,6 +421,100 @@ struct ExecutionConfig {
     orphan_dir: PathBuf,
     temp_root: PathBuf,
 }
+
+// These are operator-selected, independently qualified limits, never payload authority.
+// Missing advanced admission does not change any deterministic Study handler.
+fn advanced_batch_limits(
+    enabled: Option<&str>,
+    parameters: Option<&str>,
+    evaluations: Option<&str>,
+) -> anyhow::Result<super::analysis_advanced_contracts::BatchLimits> {
+    fn count(text: Option<&str>) -> anyhow::Result<usize> {
+        let text = text.context("study_runtime_configuration")?;
+        ensure!(
+            !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()),
+            "study_runtime_configuration"
+        );
+        let value: u32 = text.parse().context("study_runtime_configuration")?;
+        ensure!(value > 0, "study_runtime_configuration");
+        Ok(usize::try_from(value)?)
+    }
+    ensure!(enabled == Some("true"), "study_runtime_unavailable");
+    let max_parameters = count(parameters)?;
+    let max_evaluations = count(evaluations)?;
+    ensure!(max_evaluations >= 3, "study_runtime_configuration");
+    Ok(super::analysis_advanced_contracts::BatchLimits {
+        max_parameters,
+        max_evaluations,
+    })
+}
+
+fn advanced_job_binding(
+    input: &super::analysis_advanced_contracts::ServiceInput,
+    request: &JobRequest,
+    subject: Uuid,
+    job: &WorkerJob,
+    batch: &super::analysis_advanced_contracts::BatchLimits,
+) -> anyhow::Result<()> {
+    super::analysis_advanced::validate_input(input)?;
+    ensure!(
+        input.analysis.study_id == request.study_id
+            && input.analysis.analysis_id == subject
+            && input.analysis.execution.job_id == job.id,
+        "study_analysis_job_binding"
+    );
+    let evaluations = match &input.analysis.config {
+        super::analysis_advanced_contracts::Config::SensitivityOat { parameters, .. } => {
+            parameters.len().checked_mul(2)
+        }
+        super::analysis_advanced_contracts::Config::Uncertainty { sample_count, .. } => {
+            Some(*sample_count)
+        }
+    };
+    ensure!(
+        input.analysis.config.parameters().len() <= batch.max_parameters
+            && evaluations
+                .and_then(|n| n.checked_add(1))
+                .is_some_and(|n| n <= batch.max_evaluations),
+        "study_advanced_evaluation_limit"
+    );
+    Ok(())
+}
+
+fn method_factor_limit(enabled: Option<&str>, limit: Option<&str>) -> anyhow::Result<usize> {
+    ensure!(enabled == Some("true"), "study_runtime_unavailable");
+    let value = limit.context("study_runtime_configuration")?;
+    ensure!(
+        !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()),
+        "study_runtime_configuration"
+    );
+    let limit: usize = value.parse().context("study_runtime_configuration")?;
+    ensure!(
+        (1..=super::method_assessment_contracts::MAX_SELECTED_FACTOR_RECORDS).contains(&limit),
+        "study_runtime_configuration"
+    );
+    Ok(limit)
+}
+
+fn method_job_binding(
+    context: &super::method_runtime_contracts::JobContext,
+    request: &JobRequest,
+    subject: Uuid,
+    job: &WorkerJob,
+    factor_limit: usize,
+) -> anyhow::Result<()> {
+    super::method_assessment::validate_context(context)?;
+    ensure!(
+        context.input.assessment.study_id == request.study_id
+            && context.input.assessment.assessment_id == subject
+            && !subject.is_nil()
+            && context.input.assessment.execution.job_id == job.id
+            && context.budget.max_selected_factor_records <= factor_limit,
+        "study_method_job_binding"
+    );
+    Ok(())
+}
+
 impl ExecutionConfig {
     fn environment() -> anyhow::Result<Self> {
         ensure!(
@@ -577,7 +705,55 @@ async fn complete(
     body: &Value,
     deadline: Instant,
 ) -> anyhow::Result<()> {
-    complete_with_retry(deadline, || rpc(pool, name, subject, job, Some(body))).await
+    complete_with_retry(deadline, || async {
+        let data = rpc(pool, name, subject, job, Some(body)).await?;
+        if name == super::method_runtime_contracts::COMPLETE_RPC {
+            let value: super::method_runtime_contracts::ReconciledResource =
+                serde_json::from_value(data.clone())?;
+            let reference: ArtifactRef = serde_json::from_value(body["factsRef"].clone())?;
+            validate_method_resource(
+                &value,
+                job.payload["studyId"]
+                    .as_str()
+                    .context("study_method_completion_binding")?,
+                subject,
+                job.id,
+                &reference,
+                Some(
+                    body["configHash"]
+                        .as_str()
+                        .context("study_method_completion_binding")?,
+                ),
+            )?;
+        }
+        Ok(data)
+    })
+    .await
+}
+
+fn validate_method_resource(
+    resource: &super::method_runtime_contracts::ReconciledResource,
+    study: &str,
+    subject: Uuid,
+    job: Uuid,
+    reference: &ArtifactRef,
+    config_hash: Option<&str>,
+) -> anyhow::Result<()> {
+    let row = &resource.value;
+    super::method_assessment::validate_config(&row.config)?;
+    ensure!(
+        resource.r#type == "methodAssessment"
+            && row.study_id.to_string() == study
+            && row.assessment_id == subject
+            && row.execution.job_id == job
+            && row.execution.status == "completed"
+            && row.profile_id == super::method_assessment_contracts::PROFILE
+            && row.config_hash == super::method_assessment::config_hash(&row.config)?
+            && config_hash.is_none_or(|h| h == row.config_hash)
+            && serde_json::to_value(&row.facts_ref)? == serde_json::to_value(reference)?,
+        "study_method_completion_binding"
+    );
+    Ok(())
 }
 async fn complete_with_retry<F, Fut>(deadline: Instant, mut invoke: F) -> anyhow::Result<()>
 where
@@ -585,6 +761,7 @@ where
     Fut: std::future::Future<Output = anyhow::Result<Value>>,
 {
     let mut attempted = false;
+    let mut ambiguous = false;
     for attempt in 0..3 {
         let Some(remaining) = deadline
             .checked_duration_since(Instant::now())
@@ -598,8 +775,15 @@ where
         attempted = true;
         match timeout(remaining.min(Duration::from_secs(10)), invoke()).await {
             Ok(Ok(_)) => return Ok(()),
-            Ok(Err(error)) if error.is::<DomainRejected>() => return Err(error),
-            _ => {}
+            Ok(Err(error)) if error.is::<DomainRejected>() => {
+                // A later authorization/lease rejection cannot disprove an
+                // earlier committed callback whose acknowledgement was lost.
+                if ambiguous {
+                    return Err(CompletionUnknown.into());
+                }
+                return Err(error);
+            }
+            _ => ambiguous = true,
         }
         if attempt < 2 {
             tokio::time::sleep(Duration::from_millis(100)).await;
@@ -619,6 +803,29 @@ async fn pipeline(
     publishing: &AtomicBool,
     lease_seconds: i32,
 ) -> anyhow::Result<()> {
+    let advanced_batch = if job.job_kind == "study.analysis_advanced" {
+        Some(advanced_batch_limits(
+            std::env::var("STUDY_ADVANCED_ENABLED").ok().as_deref(),
+            std::env::var("STUDY_ADVANCED_MAX_PARAMETERS")
+                .ok()
+                .as_deref(),
+            std::env::var("STUDY_ADVANCED_MAX_EVALUATIONS")
+                .ok()
+                .as_deref(),
+        )?)
+    } else {
+        None
+    };
+    let method_limit = if job.job_kind == super::method_runtime_contracts::JOB_KIND {
+        Some(method_factor_limit(
+            std::env::var("STUDY_METHOD_ENABLED").ok().as_deref(),
+            std::env::var("STUDY_METHOD_MAX_SELECTED_FACTOR_RECORDS")
+                .ok()
+                .as_deref(),
+        )?)
+    } else {
+        None
+    };
     ensure_preflight(config, deadline, cancel).await?;
     let store = state.object_store.study_artifacts();
     let work = tempfile::Builder::new()
@@ -772,6 +979,133 @@ async fn pipeline(
                 json!({"profileId":data["preparation"]["profileId"],"calculationContractRef":data["preparation"]["calculationContractRef"]}),
                 "modelInput",
                 INPUT_SCHEMA,
+            )
+        }
+        "study.method_assessment" => {
+            let data = bounded(
+                cancel,
+                deadline,
+                rpc(&state.pool, input_rpc(&job.job_kind)?, subject, job, None),
+            )
+            .await?;
+            let context: super::method_runtime_contracts::JobContext =
+                serde_json::from_value(data)?;
+            method_job_binding(
+                &context,
+                request,
+                subject,
+                job,
+                method_limit.context("study_runtime_unavailable")?,
+            )?;
+            let source = work.path().join("method-source.json");
+            let prepared = work.path().join("method-prepared.json");
+            let result = work.path().join("method-result.json");
+            for (artifact, kind, path) in [
+                (&context.input.source_artifact, "modelSource", &source),
+                (
+                    &context.input.baseline.prepared_artifact,
+                    "modelInput",
+                    &prepared,
+                ),
+                (
+                    &context.input.baseline.result_artifact,
+                    "runResult",
+                    &result,
+                ),
+            ] {
+                download(
+                    &store,
+                    artifact,
+                    request.study_id,
+                    kind,
+                    path,
+                    cancel,
+                    deadline,
+                )
+                .await?;
+            }
+            // Actual source rights and frozen context are resolved again after protected I/O.
+            let current = bounded(
+                cancel,
+                deadline,
+                rpc(&state.pool, input_rpc(&job.job_kind)?, subject, job, None),
+            )
+            .await?;
+            ensure!(
+                current == serde_json::to_value(&context)?,
+                "study_method_input_changed"
+            );
+            let body = json!({"profileId":context.input.assessment.profile_id,"configHash":context.input.assessment.config_hash});
+            write_json(
+                &input_file,
+                &super::method_runtime_contracts::NativeInput {
+                    schema_version: super::method_runtime_contracts::NATIVE_SCHEMA.into(),
+                    context,
+                    snapshot_path: text_path(&source)?,
+                    prepared_path: text_path(&prepared)?,
+                    result_path: text_path(&result)?,
+                    static_cache_directory: std::env::var("LCIA_STATIC_CACHE_DIR").ok(),
+                    static_cache_base_url: std::env::var("LCIA_STATIC_CACHE_BASE_URL").ok(),
+                },
+            )?;
+            (
+                NativeAction::AssessMethod {
+                    assessment_path: text_path(&input_file)?,
+                },
+                body,
+                "methodAssessmentFacts",
+                super::method_assessment_contracts::FACTS_SCHEMA,
+            )
+        }
+        "study.analysis_advanced" => {
+            let data = bounded(
+                cancel,
+                deadline,
+                rpc(&state.pool, input_rpc(&job.job_kind)?, subject, job, None),
+            )
+            .await?;
+            let input: super::analysis_advanced_contracts::ServiceInput =
+                serde_json::from_value(data)?;
+            let batch = advanced_batch.context("study_runtime_unavailable")?;
+            advanced_job_binding(&input, request, subject, job, &batch)?;
+            let source = work.path().join("advanced-source.json");
+            let prepared = work.path().join("advanced-prepared.json");
+            let result = work.path().join("advanced-result.json");
+            for (artifact, kind, path) in [
+                (&input.source_artifact, "modelSource", &source),
+                (&input.baseline.prepared_artifact, "modelInput", &prepared),
+                (&input.baseline.result_artifact, "runResult", &result),
+            ] {
+                download(
+                    &store,
+                    artifact,
+                    request.study_id,
+                    kind,
+                    path,
+                    cancel,
+                    deadline,
+                )
+                .await?;
+            }
+            let body = json!({"profileId":input.analysis.profile_id,"configHash":input.analysis.config_hash});
+            write_json(
+                &input_file,
+                &super::analysis_advanced_contracts::NativeInput {
+                    schema_version: "lca.study-analysis-native.v2".into(),
+                    input,
+                    snapshot_path: text_path(&source)?,
+                    prepared_path: text_path(&prepared)?,
+                    result_path: text_path(&result)?,
+                    batch_limits: batch,
+                },
+            )?;
+            (
+                NativeAction::AnalyzeAdvanced {
+                    analysis_path: text_path(&input_file)?,
+                },
+                body,
+                "analysisFacts",
+                super::analysis_advanced_contracts::FACTS_SCHEMA,
             )
         }
         "study.analysis" => {
@@ -1035,7 +1369,44 @@ async fn pipeline(
             );
         }
     }
-    if artifact_kind == "analysisFacts" {
+    if artifact_kind == "methodAssessmentFacts" {
+        let output: super::method_assessment_contracts::FactsBundle =
+            super::json::from_slice(&bytes)?;
+        let expected: super::method_runtime_contracts::NativeInput =
+            super::json::from_slice(&std::fs::read(&input_file)?)?;
+        super::method_assessment::validate_registered_output(
+            &output,
+            &expected.context,
+            &std::fs::read(&expected.prepared_path)?,
+            &std::fs::read(&expected.result_path)?,
+            &native.limits,
+        )?;
+        completion["selectedFactorRecordCount"] =
+            json!(output.method_source_evidence.selected_factors.len());
+        // Recheck before any upload; final completion independently reauthorizes again.
+        let current = bounded(
+            cancel,
+            deadline,
+            rpc(&state.pool, input_rpc(&job.job_kind)?, subject, job, None),
+        )
+        .await?;
+        ensure!(
+            current == serde_json::to_value(&expected.context)?,
+            "study_method_input_changed"
+        );
+    } else if artifact_schema == super::analysis_advanced_contracts::FACTS_SCHEMA {
+        let output: super::analysis_advanced_contracts::FactsBundle =
+            super::json::from_slice(&bytes)?;
+        let expected: super::analysis_advanced_contracts::NativeInput =
+            super::json::from_slice(&std::fs::read(&input_file)?)?;
+        super::analysis_advanced::validate_output(
+            &output,
+            &expected.input,
+            &std::fs::read(&expected.prepared_path)?,
+            &native.limits,
+            &expected.batch_limits,
+        )?;
+    } else if artifact_kind == "analysisFacts" {
         let output: super::analysis_contracts::FactsBundle = super::json::from_slice(&bytes)?;
         let expected: super::analysis_contracts::NativeInput =
             super::json::from_slice(&std::fs::read(&input_file)?)?;
@@ -1045,7 +1416,7 @@ async fn pipeline(
     let key = match artifact_kind {
         "modelSource" => "sourceArtifactRef",
         "modelInput" => "inputArtifactRef",
-        "analysisFacts" => "factsRef",
+        "analysisFacts" | "methodAssessmentFacts" => "factsRef",
         _ => "resultRef",
     };
     completion[key] = serde_json::to_value(&reference)?;
@@ -1227,7 +1598,11 @@ pub async fn handle(state: &AppState, job: &WorkerJob, lease_seconds: i32) {
                 let outcome = complete_with_retry(deadline, || {
                     task_rpc(
                         &state.pool,
-                        "svc_study_task_fail_v1",
+                        if kind == "methodAssessment" {
+                            super::method_runtime_contracts::FAIL_RPC
+                        } else {
+                            "svc_study_task_fail_v1"
+                        },
                         kind,
                         subject,
                         job.id,
@@ -1245,6 +1620,52 @@ pub async fn handle(state: &AppState, job: &WorkerJob, lease_seconds: i32) {
             tracing::warn!(worker_job_id=%job.id,code,"Study job payload requires authoritative recovery");
         }
     }
+}
+
+fn validate_method_reconcile(decision: &Value, receipt: &OrphanReceipt) -> anyhow::Result<()> {
+    let typed: super::method_runtime_contracts::ReconcileResult =
+        serde_json::from_value(decision.clone())?;
+    ensure!(
+        [
+            "queued",
+            "running",
+            "waiting",
+            "completed",
+            "blocked",
+            "stale",
+            "failed",
+            "cancelled"
+        ]
+        .contains(&typed.job_status.as_str()),
+        "study_method_reconcile_binding"
+    );
+    if typed.state == "committed" {
+        validate_method_resource(
+            typed
+                .resource
+                .as_ref()
+                .context("study_method_reconcile_binding")?,
+            &receipt.study_id.to_string(),
+            receipt.resource_id,
+            receipt.worker_job_id,
+            &receipt.artifact_ref,
+            None,
+        )?;
+    } else {
+        ensure!(
+            ["referenced", "unreferenced", "pending"].contains(&typed.state.as_str())
+                && typed.resource.is_none(),
+            "study_method_reconcile_binding"
+        );
+        if typed.state == "unreferenced" {
+            ensure!(
+                ["completed", "failed", "cancelled", "blocked"]
+                    .contains(&typed.job_status.as_str()),
+                "study_method_reconcile_binding"
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Reconcile a private upload receipt only against canonical DB job/attachment facts and the
@@ -1281,7 +1702,11 @@ pub async fn reconcile(state: &AppState, path: &Path) -> anyhow::Result<&'static
     let tail = format!(",'{}'::uuid", receipt.artifact_ref.id);
     let decision = task_rpc(
         &state.pool,
-        "svc_study_task_reconcile_v1",
+        if receipt.resource_type == "methodAssessment" {
+            super::method_runtime_contracts::RECONCILE_RPC
+        } else {
+            "svc_study_task_reconcile_v1"
+        },
         &receipt.resource_type,
         receipt.resource_id,
         receipt.worker_job_id,
@@ -1290,6 +1715,9 @@ pub async fn reconcile(state: &AppState, path: &Path) -> anyhow::Result<&'static
         &tail,
     )
     .await?;
+    if receipt.resource_type == "methodAssessment" {
+        validate_method_reconcile(&decision, &receipt)?;
+    }
     match decision["state"].as_str() {
         Some("committed" | "referenced") => {
             std::fs::remove_file(path)?;
@@ -1453,6 +1881,194 @@ mod tests {
         assert!(request(&value).is_err());
     }
     #[test]
+    fn method_dispatch_and_budget_are_separate_and_old_payloads_stay_closed() {
+        for (enabled, limit) in [
+            (None, Some("8192")),
+            (Some("false"), Some("8192")),
+            (Some("TRUE"), Some("8192")),
+            (Some("true"), None),
+            (Some("true"), Some("0")),
+            (Some("true"), Some("8193")),
+            (Some("true"), Some("+1")),
+            (Some("true"), Some("1e2")),
+        ] {
+            assert!(method_factor_limit(enabled, limit).is_err());
+        }
+        assert_eq!(
+            method_factor_limit(Some("true"), Some("8192")).unwrap(),
+            8192
+        );
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/study-method-assessment/service-seams.json"
+        ))
+        .unwrap();
+        let context: super::super::method_runtime_contracts::JobContext =
+            serde_json::from_value(fixture["inputContext"].clone()).unwrap();
+        let mut value = job();
+        value.id = context.input.assessment.execution.job_id;
+        value.job_kind = super::super::method_runtime_contracts::JOB_KIND.into();
+        value.payload_schema_version = super::super::method_runtime_contracts::JOB_SCHEMA.into();
+        value.payload = fixture["payload"].clone();
+        let (request_value, subject) = request(&value).unwrap();
+        method_job_binding(&context, &request_value, subject, &value, 8192).unwrap();
+        assert_eq!(resource_type(&value.job_kind).unwrap(), "methodAssessment");
+        assert_eq!(
+            input_rpc(&value.job_kind).unwrap(),
+            super::super::method_runtime_contracts::READ_INPUT_RPC
+        );
+        assert_eq!(
+            completion_rpc(&value.job_kind).unwrap(),
+            super::super::method_runtime_contracts::COMPLETE_RPC
+        );
+        assert!(method_job_binding(&context, &request_value, subject, &value, 8191).is_err());
+        let mut wrong = context.clone();
+        wrong.input.assessment.execution.job_id = Uuid::new_v4();
+        assert!(method_job_binding(&wrong, &request_value, subject, &value, 8192).is_err());
+        wrong = context;
+        wrong.input.source_snapshot["approved"] = json!(true);
+        assert!(method_job_binding(&wrong, &request_value, subject, &value, 8192).is_err());
+        value.payload["analysisId"] = Value::Null;
+        assert!(request(&value).is_err());
+        value.payload = fixture["payload"].clone();
+        value.payload["assessmentId"] = json!(Uuid::nil());
+        assert!(request(&value).is_err());
+        let mut legacy = job();
+        legacy.payload["assessmentId"] = Value::Null;
+        assert!(request(&legacy).is_err());
+    }
+    #[test]
+    fn method_completion_reply_requires_exact_record_job_and_registered_bytes() {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/study-method-assessment/service-seams.json"
+        ))
+        .unwrap();
+        let valid: super::super::method_runtime_contracts::ReconciledResource =
+            serde_json::from_value(json!({"type":"methodAssessment","value":fixture["record"]}))
+                .unwrap();
+        let reference: ArtifactRef =
+            serde_json::from_value(fixture["completion"]["factsRef"].clone()).unwrap();
+        let row = &valid.value;
+        validate_method_resource(
+            &valid,
+            &row.study_id.to_string(),
+            row.assessment_id,
+            row.execution.job_id,
+            &reference,
+            Some(&row.config_hash),
+        )
+        .unwrap();
+        let mut wrong = valid.clone();
+        wrong.value.execution.status = "running".into();
+        assert!(
+            validate_method_resource(
+                &wrong,
+                &row.study_id.to_string(),
+                row.assessment_id,
+                row.execution.job_id,
+                &reference,
+                Some(&row.config_hash)
+            )
+            .is_err()
+        );
+        wrong = valid.clone();
+        wrong.value.facts_ref.as_mut().unwrap().content_hash = "0".repeat(64);
+        assert!(
+            validate_method_resource(
+                &wrong,
+                &row.study_id.to_string(),
+                row.assessment_id,
+                row.execution.job_id,
+                &reference,
+                Some(&row.config_hash)
+            )
+            .is_err()
+        );
+        assert!(
+            validate_method_resource(
+                &valid,
+                &row.study_id.to_string(),
+                Uuid::new_v4(),
+                row.execution.job_id,
+                &reference,
+                Some(&row.config_hash)
+            )
+            .is_err()
+        );
+        assert!(
+            validate_method_resource(
+                &valid,
+                &row.study_id.to_string(),
+                row.assessment_id,
+                row.execution.job_id,
+                &reference,
+                Some(&"0".repeat(64))
+            )
+            .is_err()
+        );
+    }
+    #[test]
+    fn advanced_admission_and_job_bindings_fail_closed_without_changing_old_jobs() {
+        for (enabled, parameters, evaluations) in [
+            (None, Some("8"), Some("129")),
+            (Some("false"), Some("8"), Some("129")),
+            (Some("TRUE"), Some("8"), Some("129")),
+            (Some("true"), None, Some("129")),
+            (Some("true"), Some("0"), Some("129")),
+            (Some("true"), Some("8"), Some("2")),
+            (Some("true"), Some("+8"), Some("129")),
+            (Some("true"), Some("8"), Some("4294967296")),
+        ] {
+            assert!(advanced_batch_limits(enabled, parameters, evaluations).is_err());
+        }
+        let batch = advanced_batch_limits(Some("true"), Some("8"), Some("129")).unwrap();
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/study-analysis/advanced/service-seams.json"
+        ))
+        .unwrap();
+        let input: super::super::analysis_advanced_contracts::ServiceInput =
+            serde_json::from_value(fixture["readInputResponse"]["data"].clone()).unwrap();
+        let mut value = job();
+        value.id = input.analysis.execution.job_id;
+        value.job_kind = "study.analysis_advanced".into();
+        value.payload_schema_version = "study.analysis_advanced.request.v1".into();
+        value.payload = json!({"schemaVersion":value.payload_schema_version,"studyId":input.analysis.study_id,"analysisId":input.analysis.analysis_id});
+        let (request, subject) = request(&value).unwrap();
+        advanced_job_binding(&input, &request, subject, &value, &batch).unwrap();
+        assert_eq!(resource_type(&value.job_kind).unwrap(), "analysis");
+        assert!(handles(&value.job_kind));
+        for name in [
+            input_rpc(&value.job_kind).unwrap(),
+            completion_rpc(&value.job_kind).unwrap(),
+        ] {
+            let row = fixture["functions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|f| f["name"] == name)
+                .unwrap();
+            assert_eq!(row["serviceExecute"], true);
+            assert_eq!(row["actorExecute"], false);
+            let mut args = vec!["p_analysis_id", "p_job_id", "p_lease_token"];
+            if name.contains("complete") {
+                args.extend(["p_completion", "p_idempotency_key"]);
+            }
+            assert_eq!(row["argumentNames"], json!(args));
+        }
+        value.id = Uuid::new_v4();
+        assert!(advanced_job_binding(&input, &request, subject, &value, &batch).is_err());
+        value.id = input.analysis.execution.job_id;
+        assert!(advanced_job_binding(&input, &request, Uuid::new_v4(), &value, &batch).is_err());
+        let tiny = super::super::analysis_advanced_contracts::BatchLimits {
+            max_parameters: 0,
+            max_evaluations: 2,
+        };
+        assert!(advanced_job_binding(&input, &request, subject, &value, &tiny).is_err());
+        let mut wrong_request = request;
+        wrong_request.study_id = Uuid::new_v4();
+        assert!(advanced_job_binding(&input, &wrong_request, subject, &value, &batch).is_err());
+    }
+
+    #[test]
     fn private_storage_location_is_bound_to_study_and_registered_artifact() {
         let study = Uuid::new_v4();
         let id = Uuid::new_v4();
@@ -1597,6 +2213,32 @@ mod callback_race_tests {
         assert!(error.is::<CompletionUnknown>());
         assert_eq!(calls.load(Ordering::SeqCst), 1);
     }
+    #[tokio::test]
+    async fn lost_ack_then_authorization_denial_preserves_unknown_completion() {
+        let committed = AtomicBool::new(false);
+        let calls = AtomicUsize::new(0);
+        let error = complete_with_retry(Instant::now() + Duration::from_secs(2), || {
+            let call = calls.fetch_add(1, Ordering::SeqCst);
+            if call == 0 {
+                committed.store(true, Ordering::SeqCst);
+            }
+            async move {
+                if call == 0 {
+                    anyhow::bail!("simulated_committed_reply_lost");
+                }
+                Err(DomainRejected.into())
+            }
+        })
+        .await
+        .unwrap_err();
+        assert!(committed.load(Ordering::SeqCst));
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        // Both publication cleanup and top-level failure handling retain an
+        // unknown completion: no object deletion or contradictory failure RPC.
+        assert!(error.is::<CompletionUnknown>());
+        assert!(!error.is::<DomainRejected>());
+    }
+
     #[tokio::test]
     async fn identical_receipt_retry_recovers_ack_and_rejection_is_not_unknown() {
         let calls = AtomicUsize::new(0);

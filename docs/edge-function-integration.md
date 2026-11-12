@@ -25,8 +25,8 @@ checkPaths:
   - crates/**
   - supabase/migrations/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
-lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -252,4 +252,12 @@ Edge/Next 必须以 report 中 `informationalOnly=true`、`affectsReviewState=fa
 
 ## Study calculator runtime
 
-The [Study owned runtime](agents/contracts/study-runtime-contract.md) consumes the three versioned IDs-only Study requests from `worker_jobs(worker_runtime=calculator,worker_queue=solver)`. Domain read/completion functions bind the actual Study/resource/job/token; success is committed exactly once by the domain callback. Edge must not expose private source authorization, raw locators or caller-issued model/input hashes. Public capability activation requires actual qualified deployed producer/assets, not fixture schema success. Native/Storage clock budgets are local monotonic; DB lease and accepted cancellation remain the publication arbiter.
+The [Study owned runtime](agents/contracts/study-runtime-contract.md) consumes versioned IDs-only Study requests from `worker_jobs(worker_runtime=calculator,worker_queue=solver)`. Domain read/completion functions bind the actual Study/resource/job/token; success is committed exactly once by the domain callback. Edge must not expose private source authorization, raw locators or caller-issued model/input hashes. Public capability activation requires actual qualified deployed producer/assets, not fixture schema success. Native/Storage clock budgets are local monotonic; DB lease and accepted cancellation remain the publication arbiter.
+
+
+The source-bound method assessment uses a distinct `study.method_assessment`
+job and private method context/complete/fail/reconcile interfaces under the
+[method contract](agents/contracts/study-method-assessment-contract.md).
+Evidence declarations stay recorded-unverified; source matches and a facts hash
+are not professional approval. Edge owns V6/report disclosure, and actual
+cross-owner qualification is required before any deployment admission.

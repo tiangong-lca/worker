@@ -21,8 +21,8 @@ checkPaths:
   - crates/solver-worker/src/storage.rs
   - docs/agents/contracts/study-runtime-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
-lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - study-compiler-contract.md
   - ../../lca-api-contract.md
@@ -34,10 +34,12 @@ related:
 
 `study::runtime` dispatches source, preparation, Run and analysis kinds from the
 existing calculator/solver `worker_jobs` loop: `study.source_acquire`,
-`study.model_prepare`, `study.run`, `study.analysis`.
+`study.model_prepare`, `study.run`, `study.analysis`, `study.analysis_advanced`,
+`study.method_assessment`.
 Private payload schemas are exactly `<kind>.request.v1`; payloads contain
 `schemaVersion`, `studyId` and exactly one `acquisitionId`, `preparationId` or
-`runId` or `analysisId`. Actor claims, source documents, source-state assertions, artifact
+`runId` or `analysisId` or `assessmentId`. Method payloads have exactly schema,
+Study and assessment IDs; old payloads still reject `assessmentId`. Actor claims, source documents, source-state assertions, artifact
 locators, results and credentials are not accepted in job payloads.
 
 Successful domain callbacks atomically commit the artifact/domain association
@@ -154,7 +156,7 @@ component readiness, native preload/work, upload, readback and callback attempts
 The initial heartbeat is bounded by that same deadline; it cannot hold a claimed attempt indefinitely before native work starts. Failure acknowledgements use the same deadline-aware exact retry protocol. No new callback is initiated after that budget; an exhausted attempt leaves terminal readback/recovery to the canonical job lifecycle. A callback already dispatched
 when the client times out may have committed under a valid DB lease: its outcome
 is unknown, not remotely aborted. Identical callback retries recover the
-original receipt. Unknown outcomes retain objects and ownership receipts and do
+original receipt. Once any dispatched attempt is ambiguous, a later authorization or lease rejection cannot prove that the earlier attempt did not commit; the outcome stays unknown until success or scoped authoritative reconciliation. A first explicit rejection remains a known rejection. Unknown outcomes retain objects and ownership receipts and do
 not trigger a contradictory generic terminal write. Accepted cancellation,
 expired lease or takeover remains the atomic DB publication fence.
 
@@ -170,7 +172,17 @@ The first profile uses W05's 4 MiB source/prepared/transfer ceiling, input/model
 admission bounds, one claimed job per worker, native RSS threshold 512 MiB and
 bounded file/request sizes. RSS is sampled every 100ms: Linux `/proc`, macOS
 bounded `/bin/ps`, Windows `K32GetProcessMemoryInfo` with the documented
-`PROCESS_MEMORY_COUNTERS` layout. Probe failure fails closed. Sampling and OS
+`PROCESS_MEMORY_COUNTERS` layout. Probe failure fails closed. On Linux alone, a
+successful `/proc/PID/status` read with no `VmRSS` row can occur during exit-mm
+teardown before `try_wait` observes exit. That typed condition gets one exit
+reconciliation window of at most 100ms, capped by the original absolute deadline,
+with cancellation checked at most every 10ms while waiting. Only an observed
+successful reaped exit, still within that window and the original deadline and
+without cancellation, succeeds. Prior sampled peak RSS is retained; a live child
+at expiry is killed and awaited with the original probe-failure category. Other
+I/O, malformed RSS and platform probe failures retain immediate fail-closed
+behavior. Safe fixed probe-kind diagnostics never include raw status text,
+request paths or child stderr. Sampling and OS
 scheduling allow overshoot; this is **not a kernel hard RSS limit**. Production
 qualification must bind the actual existing container/task outer memory and
 process supervision separately. The local native component receipt does not
@@ -235,3 +247,74 @@ qualification. Record separate evidence for local component, real actor API,
 actual source resolver, actual Storage, native process, canonical lease/terminal
 callbacks and deployment. Root coordination retains exact source/build/receipt
 identities; no hosted deployment follows from source merge or this document.
+
+## W14 advanced native boundary
+
+The private `analyze_advanced` action consumes `lca.study-analysis-native.v2`,
+with exact frozen baseline/source files and explicit experimental BatchLimits.
+Its closed config/facts/input v2 formats and numerical interpretation live in
+[the analysis contract](study-analysis-contract.md). Aggregate native timing and
+all-or-error diagnostics do not relax the existing parent attempt, lease,
+cancellation, source rights, journal, upload or unknown-callback invariants.
+There is no implied daemon/API admission from that native component.
+
+
+### Explicit advanced daemon admission
+
+The separate advanced job now uses the agreed Database #909 / Edge #553
+`svc_study_analysis_advanced_read_input_v1` and
+`svc_study_analysis_advanced_complete_v1` seams. The read DTO is input.v2;
+completion is facts.v2 without W08 comparability. The parent binds exact
+Study/analysis/job, downloads the original source snapshot and baseline
+prepared/result through their issued private capabilities, and sends only
+those verified files to `analyze_advanced`. No live source or factor reload
+is introduced. After native execution, the parent validates the complete
+facts catalog, frozen identities and effective limits before the existing
+journal/upload/readback/fenced completion protocol.
+
+Admission additionally requires `STUDY_ADVANCED_ENABLED=true`, explicit positive
+`STUDY_ADVANCED_MAX_PARAMETERS` and `STUDY_ADVANCED_MAX_EVALUATIONS` (at least
+three, including the baseline reproduction). Missing or malformed values reject
+only advanced jobs; deterministic handlers retain their admission contract.
+The service/operator must bind these limits to actual qualification evidence;
+no default advanced capacity is advertised. The DB configuration independently
+limits public admission. The existing whole-attempt deadline, native aggregate
+budget, artifact/RSS limits, single claim, cancellation and unknown-outcome
+retention remain unchanged. Code wiring and local fixture tests do not qualify
+the actual installed SQL/Storage/actor pipeline or a hosted deployment.
+
+
+## Method-assessment daemon boundary
+
+The separate default-off method job expects the frozen interfaces in the
+[method contract](study-method-assessment-contract.md). Native action
+`assess_method` consumes private native.v1 and the distinct job-context.v1
+wrapper without widening its inner assessment-input.v1. The parent binds
+Study/assessment/job and admitted selected-factor ceiling to its independently
+configured `STUDY_METHOD_MAX_SELECTED_FACTOR_RECORDS`; `STUDY_METHOD_ENABLED=true`
+and a positive ceiling at most8192 are both required. Missing settings reject
+only method jobs. New job admission remains independently Database-owned.
+
+The Worker downloads the three exact SourceSnapshot/prepared/result private
+artifacts, then resolves the same current context again before native execution.
+Pinned method loading and frozen-source re-preparation run inside the existing
+supervised native process, with the selected-factor bound checked before source
+expansion. These verification steps create no new deterministic Run or source
+snapshot and do not replace the original frozen method/calculation identities.
+The whole-attempt deadline/RSS/cancellation/kill-and-reap policy remains in force.
+
+The parent verifies registered facts purpose, all25 category identities, all20
+requirement/professional states, exact scalar catalog, N/W availability and
+original baseline references. It reauthorizes through input resolution again
+before upload. Method completion carries actual selected-factor record count
+(including missing-factor records) and exact immutable facts ref. Only this
+family uses its distinct read/complete/fail/reconcile RPCs. A completion success
+must return the exact method record/job/config/artifact; malformed success is
+ambiguous and retains the original journal through the sticky-unknown retry
+protocol. Formal reconciliation checks the exact completed record before
+retiring a method upload journal. No actor/source permission is renewed by it.
+
+Local source/fixture/native proof does not establish actual Database issuance,
+OAuth/Storage/report consumers, supported-host method capacity or a complete
+industry positive. Those remain independently required through the tracked
+cross-owner cohort. No migration or source merge enables this capability.

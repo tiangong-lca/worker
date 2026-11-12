@@ -42,8 +42,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
-lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
+lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
+lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -92,6 +92,54 @@ cargo fmt --all -- --check
 ```
 
 Treat the last two commands as non-negotiable hard gates after code changes.
+
+### Study method assessment qualification
+
+`make study-method-check` checks the exact adopted portable source and isolated
+sixteen-primary-category arithmetic with an independent 80-digit Decimal oracle,
+plus adversarial provenance, mapping, scale, unknown-factor and decomposition
+cases. Rust tests compare the native output with that oracle-checked fixture.
+`make study-method-native-check` additionally writes fresh native output under
+`reports/study-method` and runs the independent oracle over it. The fixture is
+explicitly isolated arithmetic, never a source-complete Study or conformity case.
+No external Python package is needed for these gates.
+
+For a bounded actual replay use the [method assessment contract](contracts/study-method-assessment-contract.md)
+and exact original prepared/result/SourceSnapshot bytes plus read-only canonical
+baseline metadata. Bind all original and emitted byte hashes and retain the
+private candidate/facts outside Git. Check all twenty separate requirements,
+known cutoffs/coverage gaps and false qualification flags. Negative cases must
+reject byte/source substitutions, unknown approval/job fields and output-path
+replacement. Original artifacts must stay unchanged. The existing two-method,
+four-cutoff cement Study remains an actual incomplete/negative case; a complete
+real positive case and professional judgment are still unavailable. A successful
+offline invocation is not Database/Edge/report/authorization qualification.
+The separately gated method runtime additionally needs exact service-context,
+three-artifact download/current-rights recheck, native selected-factor budget,
+immutable publication, lost-ack retention and formal reconciliation proof.
+Run `make study-method-check` for the independent scalar/catalog oracle and
+reproducible closed schemas; actual cross-owner qualification remains separate.
+
+The 2026-11-04 bounded source/native assessment at exact source
+`6d33613e2ed969e76a9cb42ab7bf6e9a70b9e352` used a locked macOS arm64 debug
+build with SHA256
+`4f161bf96ed9f0dc1cb49c187d2b15bb65d8388856f66dc99536d8b671780b07`.
+A synthetic 25-method × 128-axis shape completed with 3,200 evidence records,
+2,129,770 facts bytes, 28.64 seconds and 202,211,328 bytes sampled peak RSS.
+A 3,199-record admitted ceiling rejected that shape before source expansion.
+The 8,175-record shape failed closed with `resource_limit`; its evidence rows
+alone cannot fit the 4 MiB envelope. The absolute 8,192-pair cap does not promise
+successful execution for every metadata/dimension combination. No supervisor
+stop was required and every owned child was reaped.
+
+These measurements use actual pinned factor values with synthetic model/unit
+support and are not source-unit suitability, hosted capacity or real-study
+qualification. The same native pipeline produced six matched factors and ten
+gaps for one axis with all sixteen primary methods; N/W remained unavailable.
+See the [structural coverage limit](contracts/study-method-assessment-contract.md#material-p1-coverage-limit)
+for why current exact-source complete-sixteen eligibility is unreachable.
+Keep server admission, byte caps, outer containment and real actor/job/Storage
+qualification separately evidenced; never replace them with this local table.
 
 ### Study P0 offline qualification
 
@@ -673,6 +721,67 @@ with its owner first; no shared or hosted environment is an implicit target.
 Run focused `cargo test -p solver-worker --lib study -- --nocapture`, fmt and hard Clippy. Build `solver-worker`, `study_native`, `study_runtime_preflight`, and `study_artifact_reconcile`. Component proof uses `study_runtime_preflight --native-bin <absolute> --directory <private existing directory> --receipt <absolute receipt>`; this tests actual linked arithmetic and resource/cancellation reaping, not source authorization.
 
 Real integration requires the Database/Edge owned Study runtime migrations and actor endpoints. Start the existing daemon with `--mode worker --queue-backend worker-jobs --worker-jobs-claim-limit 1`; use task-owned explicit DB/S3 settings, `STUDY_RUNTIME_ENABLED=true`, absolute native/temp/journal paths and a verified base cache. Never inherit a hosted environment for a local proof. Record exact actor/source/scope/export, compiler input/model/result bytes, task recovery, cancellation and callback evidence. [The runtime contract](contracts/study-runtime-contract.md) distinguishes these from component fixtures and describes unknown-outcome/cleanup handling.
+
+The Linux `ci` native qualification step explicitly runs
+`cargo test --locked -p solver-worker --lib linux_exit_rss_race_reconciles_actual_child -- --ignored --nocapture`.
+This starts only owned test children, each with at most 20,000 untouched private page
+mappings (at most 80MiB virtual; host page size recorded), for at most 24 attempts within one five-second budget. It must observe
+an actual missing `VmRSS` row while `try_wait` returns no status, then verify the
+bounded reconciliation, successful exit, retained sampled peak and reaping. Its
+safe receipt records platform/source, attempts, samples and reconciliation time.
+The separately ignored `linux_exit_rss_probe_child` is its subprocess fixture,
+not an independent qualification command. Ordinary `runtime_process::tests` use
+FIFO-controlled children for successful/nonzero delayed exit, a still-live probe
+failure, cancellation/deadline during reconciliation, immediate other-error
+failure and reaping. Missing-row parsing is Linux-only; deterministic supervision
+cases also run on macOS without altering its production probe behavior. These
+prove the supported race and repair, not the cause of the historical hosted
+failure whose inner probe error was discarded. Existing advanced component
+thresholds and assertions remain required; per-case start diagnostics identify
+future failures without including private source/input bytes. Explicit component
+failure output includes the closed code, probe kind, PID, sampled peak and
+reaped flag even when the test has no tracing subscriber.
+
+### Study W14 independent advanced profiles
+
+Run `cargo test -p solver-worker --lib study::analysis_advanced` and the full
+serialized test gate. Published NIST HMAC_DRBG and independent Python profile
+vectors, analytic signed/zero/cyclic/allocation/partial controls, uniform-moment
+and whole-row dependence controls, type-7 small-N statistics, invalid-sample and
+identity/boundary negatives are required. Existing W08 and P1 suites stay intact.
+
+`STUDY_ADVANCED_FIXTURE_DIR=/absolute/task-owned/fixture` with
+`actual_native_input_fixture_export_is_opt_in_and_integrity_checked` exports
+synthetic exact source/prepared/result/private input/facts for consumer schema
+verification. Private source and service wrappers must never become report
+content or be claimed as DB-issued evidence.
+
+After building `study_native`, run
+`STUDY_NATIVE_BINARY=/absolute/study_native STUDY_ADVANCED_QUALIFICATION_RECEIPT=/absolute/task-owned/receipt.json cargo test -p solver-worker --lib advanced_native_capacity_and_running_cancellation -- --ignored --nocapture`.
+The receipt measures actual compile+solve+serialization, artifact bytes and
+sampled RSS for linear, signed, cyclic, allocated and 128-view/64-instance
+near-limit models, and actual private-input-phase cancellation/reaping. It is a
+single-host synthetic component measurement; it does not enable a hosted profile
+or establish a service ceiling. Retain exact source/binary hashes and platform.
+Native batch deadline and parent whole-attempt/lease/cancel/unknown-outcome tests
+remain separate. No Docker, database, Storage or production resources are used.
+
+
+The native capacity suite additionally builds a synthetic cyclic/allocation
+model at the 4096-exchange cap: 64 instances, 128 activity views, 61 elementary
+inventory axes and 25 distinct signed-scaled methods. It verifies complete
+coverage, the independently derived baseline `2440/19`, and a per-method
+scalar relation for every baseline and evaluation, while preserving the original prepared/result bytes. Eight-parameter
+OAT and sixteen-sample uncertainty each perform seventeen evaluations including
+the baseline. This is an exchange-limit/multi-method fixture, not proof that all
+possible dense-cell/metadata envelopes fit the deadline.
+
+The `ci` Linux x64 job builds the actual native executable and runs this explicit
+component suite with one BLAS/OpenMP thread. The receipt records platform, binary
+hash, shapes, artifact sizes, wall time and sampled RSS; its logged output is
+retained by the job. It also exercises cancellation/reaping. A passing component
+run does not activate an API or qualify actor/queue/Storage/report behavior,
+Windows service execution or byte-identical cross-platform numerical output.
 
 ## Independent local Model proof
 
