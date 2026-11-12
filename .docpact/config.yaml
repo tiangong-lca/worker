@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-04"
-lastReviewedCommit: "65986599adb3ae4da2385b476b376ac2a418cd25"
-lastReviewedNote: "Worker #363: checked internal residual refinement, calculation fingerprint compatibility, unchanged consumer formats and synthetic validation."
+lastReviewedAt: "2026-11-12"
+lastReviewedCommit: "3d3159d9f231143a51f761f895fbd3aef18d1b9b"
+lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
 
 # Keep deterministic governance facts here.
 # AGENTS.md remains the repo contract entrypoint.
@@ -410,6 +410,8 @@ rules:
     triggers:
       - path: crates/solver-worker/src/study/**
         kind: study-compiler
+      - path: crates/solver-worker/src/bin/model_calculate.rs
+        kind: local-model
       - path: crates/solver-worker/src/bin/study_compile.rs
         kind: study-local-executor
       - path: docs/agents/contracts/study-compiler-contract.md

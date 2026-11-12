@@ -41,9 +41,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: 65986599adb3ae4da2385b476b376ac2a418cd25
-lastReviewedNote: "Worker #363: checked internal residual refinement, calculation fingerprint compatibility, unchanged consumer formats and synthetic validation."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
+lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -673,3 +673,7 @@ with its owner first; no shared or hosted environment is an implicit target.
 Run focused `cargo test -p solver-worker --lib study -- --nocapture`, fmt and hard Clippy. Build `solver-worker`, `study_native`, `study_runtime_preflight`, and `study_artifact_reconcile`. Component proof uses `study_runtime_preflight --native-bin <absolute> --directory <private existing directory> --receipt <absolute receipt>`; this tests actual linked arithmetic and resource/cancellation reaping, not source authorization.
 
 Real integration requires the Database/Edge owned Study runtime migrations and actor endpoints. Start the existing daemon with `--mode worker --queue-backend worker-jobs --worker-jobs-claim-limit 1`; use task-owned explicit DB/S3 settings, `STUDY_RUNTIME_ENABLED=true`, absolute native/temp/journal paths and a verified base cache. Never inherit a hosted environment for a local proof. Record exact actor/source/scope/export, compiler input/model/result bytes, task recovery, cancellation and callback evidence. [The runtime contract](contracts/study-runtime-contract.md) distinguishes these from component fixtures and describes unknown-outcome/cleanup handling.
+
+## Independent local Model proof
+
+Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and factor gaps. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds and incomplete LCIA factor coverage must be disclosed. Source validation does not qualify an installed multi-platform engine or hosted API.

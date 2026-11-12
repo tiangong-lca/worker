@@ -325,8 +325,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(changed.len(), 2);
-        assert_eq!(changed[0].value, 4.0);
-        assert_eq!(changed[1].value, 3.0);
+        assert_eq!(changed[0].value.to_bits(), 4.0_f64.to_bits());
+        assert_eq!(changed[1].value.to_bits(), 3.0_f64.to_bits());
     }
 }
 

@@ -36,9 +36,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: e7e416c2fc61da9520556077860823ffccecf742
-lastReviewedNote: "Worker #360: reviewed frozen-result analysis contracts, source/Run binding, numeric codec and native dispatch; P1 hash semantics, current authorization and hosted/scientific qualification remain separate."
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 3d3159d9f231143a51f761f895fbd3aef18d1b9b
+lastReviewedNote: 'Worker #370: reviewed local Model inputs, aggregate background normalization, configurable budgets and shared-core validation; hosted Study authorization and protocols remain separate.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -288,3 +288,7 @@ This repository has a versioned local `pre-push` hook under `.githooks/pre-push`
 ### Study owned runtime
 
 `study::runtime` branches from the existing calculator solver queue, using service-owned source/read/completion RPCs and private Study Storage. `study_native` isolates preload/compile/solve; `runtime_process` supervises kill/reap and sampled RSS. Scenario uses frozen base factors and inherited base overrides; no live factor/background reload. See [runtime authority, cleanup and qualification](contracts/study-runtime-contract.md).
+
+## Local Model calculation adapter
+
+`study/local.rs` adapts editable canonical Model inputs and explicit aggregated backgrounds into the existing graph/compiler/core. `bin/model_calculate.rs` loads verified local factors and writes an independent Run. Local runtime budgets do not redefine hosted Study bounds or authorization. The [compiler contract](contracts/study-compiler-contract.md#independent-local-model-input) owns the local input and scientific boundary; distribution/installers remain separate from this source entrypoint.
