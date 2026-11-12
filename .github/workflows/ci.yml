@@ -27,6 +27,8 @@ jobs:
         run: python3 -m unittest scripts/test_ci_native_fingerprint.py
       - name: Manual validation target tests
         run: python3 -m unittest scripts/test_validate_lcia_targets.py
+      - name: Local Model package contract tests
+        run: PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
       - name: Study P0 independent qualification oracle
         run: make study-p0-check
       - name: Install SuiteSparse dependencies

@@ -15,12 +15,14 @@ import tempfile
 
 
 def command(*args):
-    return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+    return subprocess.run(args, check=True, capture_output=True, text=True, timeout=120).stdout
 
 
 def dependencies(binary):
+    identity = command("/usr/bin/otool", "-D", str(binary)).splitlines()[1:]
     return [line.strip().split(" (compatibility", 1)[0]
-            for line in command("/usr/bin/otool", "-L", str(binary)).splitlines()[1:]]
+            for line in command("/usr/bin/otool", "-L", str(binary)).splitlines()[1:]
+            if line.strip().split(" (compatibility", 1)[0] not in identity]
 
 
 def rpaths(binary):
@@ -33,19 +35,21 @@ def system_library(name):
     return name.startswith(("/System/Library/", "/usr/lib/"))
 
 
-def resolve_library(name, binary, executable):
-    def expand(value):
-        return value.replace("@loader_path", str(binary.parent)).replace(
+def resolve_library(name, binary, executable, ancestors=()):
+    def expand(value, owner):
+        return value.replace("@loader_path", str(owner.parent)).replace(
             "@executable_path", str(executable.parent))
     if name.startswith("@rpath/"):
-        candidates = [Path(expand(root)) / name.removeprefix("@rpath/")
-                      for root in rpaths(binary) + rpaths(executable)]
-        candidates.append(binary.parent / name.removeprefix("@rpath/"))
-        found = {p.resolve() for p in candidates if p.is_file()}
-        if len(found) != 1:
-            raise ValueError(f"Ambiguous or missing native dependency: {name}")
-        return found.pop()
-    result = Path(expand(name)).resolve(strict=True)
+        # dyld searches the loader's runpaths, then its ancestors in load order.
+        # Each @loader_path belongs to the image declaring that LC_RPATH.
+        owners = list(dict.fromkeys((binary, *ancestors, executable)))
+        for owner in owners:
+            for root in rpaths(owner):
+                candidate = Path(expand(root, owner)) / name.removeprefix("@rpath/")
+                if candidate.is_file():
+                    return candidate.resolve()
+        raise ValueError(f"Missing native dependency in declared runpaths: {name}")
+    result = Path(expand(name, binary)).resolve(strict=True)
     if not result.is_file():
         raise ValueError(f"Not a native library: {name}")
     return result
@@ -55,20 +59,18 @@ def bundle_native(engine, root):
     executable = root / "bin/model_calculate"
     executable.parent.mkdir(parents=True)
     shutil.copy2(engine, executable)
-    pending = [(engine, executable)]
+    pending = [(engine, executable, ())]
     seen = {}
     packaged = []
     while pending:
-        source, target = pending.pop(0)
+        source, target, ancestors = pending.pop(0)
         if command("/usr/bin/lipo", "-archs", str(source)).strip() != "arm64":
             raise ValueError("Package requires native ARM64 binaries")
         changes = []
         for name in dependencies(source):
             if system_library(name):
                 continue
-            dependency = resolve_library(name, source, engine)
-            if dependency == source:  # LC_ID_DYLIB is also shown by otool -L.
-                continue
+            dependency = resolve_library(name, source, engine, ancestors)
             if dependency.name in seen and seen[dependency.name] != dependency:
                 raise ValueError("Native dependency basename collision")
             if dependency.name not in seen:
@@ -76,7 +78,7 @@ def bundle_native(engine, root):
                 destination = root / "bin/lib" / dependency.name
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(dependency, destination)
-                pending.append((dependency, destination))
+                pending.append((dependency, destination, (source, *ancestors)))
             relative = "lib/" if target == executable else ""
             changes += ["-change", name, "@loader_path/" + relative + dependency.name]
         for old in rpaths(source):
@@ -104,17 +106,22 @@ def bundle_native(engine, root):
 
 
 def digest(file):
+    hash_value = hashlib.sha256()
     with file.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            hash_value.update(chunk)
+    return hash_value.hexdigest()
 
 
 def archive(root, output):
     files = []
     with output.open("xb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as stream:
         for file in sorted(root.rglob("*")):
+            if file.is_symlink():
+                raise ValueError("Package symlinks are not allowed")
             if file.is_dir():
                 continue
-            if file.is_symlink() or not file.is_file():
+            if not file.is_file():
                 raise ValueError("Only regular package files are allowed")
             name = file.relative_to(root).as_posix()
             size = file.stat().st_size
@@ -128,6 +135,18 @@ def archive(root, output):
             files.append(dict(path=name, bytes=size, sha256=digest(file), mode=mode))
         stream.write(bytes(1024))
     return files
+
+
+def publish(package, output):
+    # Claim a new directory exclusively; rename() alone can replace an existing
+    # empty directory created while the native readiness check was running.
+    output.mkdir(mode=0o700)
+    try:
+        for name in ["runtime.tar.gz", "manifest.json"]:
+            os.rename(package / name, output / name)
+    except BaseException:
+        shutil.rmtree(output)
+        raise
 
 
 def main():
@@ -165,7 +184,7 @@ def main():
             schema="lca.model-runtime-package.v1", platform="darwin-arm64",
             engineVersion=capability["engineVersion"], files=files,
             archive=dict(bytes=output.stat().st_size, sha256=digest(output))), indent=2) + "\n")
-        os.rename(package, args.output)
+        publish(package, args.output)
     print(json.dumps(dict(status="packaged", directory=str(args.output.resolve()),
                          platform="darwin-arm64", files=len(files), published=False)))
 

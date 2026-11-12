@@ -42,8 +42,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
-lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
+lastReviewedCommit: 269153c3b5b8a1143fa769b91e8dbe64241d470e
+lastReviewedNote: "Worker #370: reviewed native dependency relocation, exclusive package publication and cleanup, Python 3.10 compatibility, and package tests in local and CI gates."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -680,7 +680,7 @@ Require shared Study regressions plus `study::tests::local_tests`: editable inpu
 
 ### Local Model runtime packaging
 
-The package producer uses Python 3.11 or later and native macOS ARM64 developer
+The package producer uses the qualification baseline Python 3.10 or later and native macOS ARM64 developer
 tools (`otool`, `lipo`, `install_name_tool`, `codesign`). Build `model_calculate`
 with the repository toolchain, then supply an explicit complete static cache:
 
@@ -690,10 +690,12 @@ python3 -m unittest discover -s scripts -p 'test_package_model_runtime.py'
 ```
 
 The producer recursively relocates third-party dylibs, removes developer rpaths,
-ad-hoc signs modified binaries and runs the actual cache check before publishing
-the local directory. `manifest.json` and `runtime.tar.gz` carry a bounded regular
+ad-hoc signs modified binaries and runs a bounded actual cache check before
+claiming a new output directory. Resolution preserves each runpath’s declaring
+image and ancestor chain, follows dyld search order and excludes the dylib’s own
+install ID. The manifest is published last; concurrent output creation is refused. `manifest.json` and `runtime.tar.gz` carry a bounded regular
 file inventory; CLI verifies installation bytes internally. A new output directory
-is required; failed builds remove only their owned staging directory. The package
+is required; failed builds remove only their owned staging/output directories. The package
 contains installed library notices; public redistribution still requires release
 provenance, complete third-party/source-offer review and target qualification.
 
@@ -701,3 +703,9 @@ Verify the installed engine with network and developer library/cache paths denie
 including a real calculation rather than only `--describe`. The producer currently
 supports macOS ARM64; Linux and Windows packaging/execution qualification remains
 separate. A local package is not a published release or production deployment.
+
+Package tests run in `make qualification-test` / `make check` and the existing
+CI job. Portable tests cover runpath origins and ordering, directory symlink
+refusal and exclusive output publication. On macOS ARM64 the same suite compiles
+a real transitive dylib chain and executes the relocated binary after removing
+its source directory. This conditional native case does not qualify another OS.

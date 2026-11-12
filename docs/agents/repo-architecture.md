@@ -37,8 +37,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
-lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
+lastReviewedCommit: 269153c3b5b8a1143fa769b91e8dbe64241d470e
+lastReviewedNote: "Worker #370: reviewed native dependency relocation, exclusive package publication and cleanup, Python 3.10 compatibility, and package tests in local and CI gates."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
