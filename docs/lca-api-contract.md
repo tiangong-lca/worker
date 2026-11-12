@@ -26,8 +26,8 @@ checkPaths:
   - docs/frontend-integration.md
   - docs/agents/contracts/scope-closure-memory-and-result-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 269153c3b5b8a1143fa769b91e8dbe64241d470e
-lastReviewedNote: "Worker #370: reviewed native dependency relocation, exclusive package publication and cleanup, Python 3.10 compatibility, and package tests in local and CI gates."
+lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
+lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
 related:
   - AGENTS.md
   - .docpact/config.yaml

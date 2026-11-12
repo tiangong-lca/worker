@@ -42,8 +42,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 269153c3b5b8a1143fa769b91e8dbe64241d470e
-lastReviewedNote: "Worker #370: reviewed native dependency relocation, exclusive package publication and cleanup, Python 3.10 compatibility, and package tests in local and CI gates."
+lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
+lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -680,32 +680,67 @@ Require shared Study regressions plus `study::tests::local_tests`: editable inpu
 
 ### Local Model runtime packaging
 
-The package producer uses the qualification baseline Python 3.10 or later and native macOS ARM64 developer
-tools (`otool`, `lipo`, `install_name_tool`, `codesign`). Build `model_calculate`
-with the repository toolchain, then supply an explicit complete static cache:
+`scripts/package_model_runtime.py` produces the same local package format on
+macOS ARM64, Linux glibc x64/ARM64 and Windows x64. Use Python 3.10 or later and
+build `model_calculate` on the target host. Cross-compilation is not execution
+qualification. macOS Intel, Linux musl and Windows ARM64 are not supported.
+
+- macOS: use Xcode tools and SuiteSparse. The producer follows each Mach-O image's
+  declared runpaths/ancestor chain, relocates dependencies, removes developer
+  rpaths and ad-hoc signs the modified binaries.
+- Linux: install SuiteSparse, BLAS/LAPACK, a C toolchain, CMake, `pkg-config`,
+  `binutils` and `patchelf`. Build with `cargo build --locked --bin model_calculate`.
+  The producer copies the transitive non-glibc library closure into `bin/lib`,
+  replaces absolute dependency names and sets `$ORIGIN` runpaths on every image.
+  The operating system supplies glibc and its loader. Build on the oldest intended
+  glibc baseline and test on it; a newer build does not promise older glibc support.
+- Windows: use x64 Developer PowerShell (MSVC, `cl`, `dumpbin`), CMake and Rust's
+  `x86_64-pc-windows-msvc` toolchain. Install the dynamic
+  `suitesparse-umfpack:x64-windows` port; the qualification workflow uses reviewed
+  vcpkg 2026.10.16 / UMFPACK 6.3.8. Set `SUITESPARSE_LIB_DIR` to its `lib` directory
+  before `cargo build --locked --bin model_calculate`. Supply the corresponding
+  `bin` directory and x64 MSVC redistributable CRT directory via repeated
+  `--library-dir` arguments. The producer recursively copies imported DLLs beside
+  `bin/model_calculate.exe`. It never scans PATH or copies arbitrary System32
+  files; missing/ambiguous imports and wrong architectures fail.
 
 ```bash
-python3 scripts/package_model_runtime.py --engine target/debug/model_calculate --static-cache /absolute/static-cache --output /absolute/new-model-package
-python3 -m unittest discover -s scripts -p 'test_package_model_runtime.py'
+python3 scripts/package_model_runtime.py --engine target/debug/model_calculate --static-cache /path/to/static-assets --output /new/model-package
+PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
 ```
 
-The producer recursively relocates third-party dylibs, removes developer rpaths,
-ad-hoc signs modified binaries and runs a bounded actual cache check before
-claiming a new output directory. Resolution preserves each runpath’s declaring
-image and ancestor chain, follows dyld search order and excludes the dylib’s own
-install ID. The manifest is published last; concurrent output creation is refused. `manifest.json` and `runtime.tar.gz` carry a bounded regular
-file inventory; CLI verifies installation bytes internally. A new output directory
-is required; failed builds remove only their owned staging/output directories. The package
-contains installed library notices; public redistribution still requires release
-provenance, complete third-party/source-offer review and target qualification.
+On Windows, use `python`, the `.exe` engine name and the explicit DLL directories.
+`--notices <reviewed-directory>` includes third-party notices; automatically
+collected macOS notices are retained. Public redistribution still requires the
+complete native library license/source-offer review and release provenance.
 
-Verify the installed engine with network and developer library/cache paths denied,
-including a real calculation rather than only `--describe`. The producer currently
-supports macOS ARM64; Linux and Windows packaging/execution qualification remains
-separate. A local package is not a published release or production deployment.
+`manifest.json` and `runtime.tar.gz` contain a bounded regular-file inventory;
+CLI verifies its bytes internally. Readiness executes the packaged engine with
+only OS paths and without developer loader variables or business credentials.
+The output directory is claimed exclusively, its manifest is published last, and
+failure removes only owned staging/output directories. No existing output is
+replaced. The producer never uploads, installs dependencies or publishes a release.
 
-Package tests run in `make qualification-test` / `make check` and the existing
-CI job. Portable tests cover runpath origins and ordering, directory symlink
-refusal and exclusive output publication. On macOS ARM64 the same suite compiles
-a real transitive dylib chain and executes the relocated binary after removing
-its source directory. This conditional native case does not qualify another OS.
+For executable numerical qualification, extract the producer's own archive into a
+new directory and run:
+
+```bash
+python3 scripts/qualify_model_runtime.py --engine /relocated/bin/model_calculate --static-cache /relocated/cache --output /new/qualification
+```
+
+The oracle uses two synthetic explicitly connected processes and the real fossil
+CO2 climate factor; independent expected inventory/impact amounts are 21 and 42
+for functional amounts 3 and 6. The receipt is evidence for that exact host only.
+For installation proof, install the package through CLI in empty state and repeat
+calculation in a clean environment without development libraries or network.
+
+Package tests run in `make qualification-test` / `make check` and the ordinary
+Linux CI job. The native host case compiles a transitive library chain, relocates
+it, removes the source tree and executes it. Other OS-specific cases are skipped,
+not represented as successful native qualification. Portable cases cover host
+admission, missing/ambiguous imports, exact inventories, symlinks, publication
+collisions and cleanup. `.github/workflows/model-runtime.yml` is a manually
+triggered four-host native build/package/numerical qualification workflow; it
+retains evidence and does not publish runtime releases. Its explicit public cache
+source is checked by the existing Worker cache contract. A workflow definition or
+successful compilation does not substitute for a completed native run.

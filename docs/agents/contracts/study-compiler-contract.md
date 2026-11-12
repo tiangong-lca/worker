@@ -19,8 +19,8 @@ checkPaths:
   - crates/solver-worker/src/bin/model_calculate.rs
   - docs/agents/contracts/study-compiler-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
-lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
+lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
+lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
 related:
   - study-p0-calculation-profile.md
   - ../repo-validation.md
@@ -266,8 +266,12 @@ The local executable reads an explicitly provided factor directory with the
 existing verified static loader, then invokes the shared compiler/core. No DB,
 queue, credentials, automatic provider selection, download or retry is required.
 `--describe` reports the input profile and resource defaults without loading data; `--check --static-cache <directory>` verifies the complete method cache and reports readiness without calculating or writing a Run. The binary builds in `solver-worker` as a thin entrypoint. The local package producer
-`scripts/package_model_runtime.py` bundles a macOS ARM64 executable, its relocated
-native dependency closure and verified method assets for CLI installation. This
+`scripts/package_model_runtime.py` bundles a target-native executable, its relocated
+native dependency closure and verified method assets for CLI installation on
+macOS ARM64, Linux glibc x64/ARM64 and Windows x64. Windows uses
+`bin/model_calculate.exe`; Unix uses `bin/model_calculate`. The input, Run and
+scientific contracts are identical across targets; native qualification is required
+separately for each platform. This
 package does not activate hosted execution.
 
 Local `limits` fields are `maxInputBytes`, `maxDocuments`, `maxInstances`,

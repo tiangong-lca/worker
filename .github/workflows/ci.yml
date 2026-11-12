@@ -27,12 +27,12 @@ jobs:
         run: python3 -m unittest scripts/test_ci_native_fingerprint.py
       - name: Manual validation target tests
         run: python3 -m unittest scripts/test_validate_lcia_targets.py
-      - name: Local Model package contract tests
-        run: PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
       - name: Study P0 independent qualification oracle
         run: make study-p0-check
       - name: Install SuiteSparse dependencies
-        run: sudo apt-get update && sudo apt-get install -y libsuitesparse-dev libopenblas-dev liblapack-dev pkg-config postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y libsuitesparse-dev libopenblas-dev liblapack-dev pkg-config postgresql-client patchelf
+      - name: Local Model package contract tests
+        run: PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
       - name: Fingerprint installed native environment
         id: native
         run: python3 scripts/ci_native_fingerprint.py >> "$GITHUB_OUTPUT"

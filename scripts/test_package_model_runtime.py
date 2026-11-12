@@ -2,6 +2,7 @@
 import gzip
 import hashlib
 import io
+import json
 import os
 import platform
 import shutil
@@ -12,7 +13,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from package_model_runtime import archive, bundle_native, dependencies, publish, resolve_library, rpaths, system_library
+from qualify_model_runtime import qualify, CO2, METHOD
+from model_native_platforms import native_host, linux_dependencies, bundle_linux, windows_dependencies, bundle_windows, runtime_environment
+from package_model_runtime import command, archive, bundle_native, dependencies, publish, resolve_library, rpaths, system_library
 
 
 class PackageTests(unittest.TestCase):
@@ -146,6 +149,142 @@ class PackageTests(unittest.TestCase):
             executable = bundle_native(source / 'bin/engine', target)
             shutil.rmtree(source)
             subprocess.run([str(executable)], env={'PATH': '/usr/bin:/bin'}, check=True, timeout=10)
+
+
+class PlatformTests(unittest.TestCase):
+    def test_supported_hosts_are_os_architecture_pairs_and_linux_requires_glibc(self):
+        with patch('model_native_platforms.platform.libc_ver', return_value=('glibc', '2.36')):
+            for system, machine, expected in [('Darwin', 'arm64', 'darwin-arm64'), ('Linux', 'aarch64', 'linux-arm64'), ('Linux', 'x86_64', 'linux-x64'), ('Windows', 'AMD64', 'win32-x64')]:
+                with patch('model_native_platforms.platform.system', return_value=system), patch('model_native_platforms.platform.machine', return_value=machine):
+                    self.assertEqual(native_host(), expected)
+            for system, machine in [('Darwin', 'x86_64'), ('Windows', 'arm64'), ('Linux', 'i686')]:
+                with patch('model_native_platforms.platform.system', return_value=system), patch('model_native_platforms.platform.machine', return_value=machine):
+                    with self.assertRaises(ValueError):
+                        native_host()
+        with patch('model_native_platforms.platform.system', return_value='Linux'), patch('model_native_platforms.platform.machine', return_value='aarch64'), patch('model_native_platforms.platform.libc_ver', return_value=('musl', '1.2')):
+            with self.assertRaisesRegex(ValueError, 'glibc'):
+                native_host()
+
+    def test_loader_output_requires_complete_dependencies(self):
+        output = 'linux-vdso.so.1 (0xffff)\nlibsolver.so => /opt/my libs/libsolver.so (0x123)\n/lib/ld-linux-aarch64.so.1 (0x456)\n/opt/libdirect.so (0x789)'
+        self.assertEqual(linux_dependencies(output), {'libsolver.so': Path('/opt/my libs/libsolver.so'), '/opt/libdirect.so': Path('/opt/libdirect.so')})
+        for invalid in ['libmissing.so => not found', 'unrecognized format', 'libbad.so => relative/file (0x123)', 'a => /one (0x1)\na => /two (0x2)']:
+            with self.assertRaises(ValueError):
+                linux_dependencies(invalid)
+        self.assertEqual(windows_dependencies('  KERNEL32.dll\n  umfpack.dll\n  1000 .data\n  umfpack.dll\n'), ['KERNEL32.dll', 'umfpack.dll'])
+
+    def test_linux_keeps_os_loader_and_rewrites_each_numerical_library_runpath(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            engine, library = root / 'engine', root / 'libnumeric.so'
+            engine.write_text('engine')
+            library.write_text('library')
+            package = root / 'package'
+            changes = []
+            def run(tool, *args):
+                if tool == 'ldd':
+                    source = library if Path(args[0]) == engine else package / 'bin/lib/libnumeric.so'
+                    return f'libnumeric.so => {source} (0x123)\n/lib/ld-linux-aarch64.so.1 (0x456)'
+                if tool == 'readelf':
+                    return 'Class: ELF64\nMachine: AArch64\n'
+                if args[0] == '--print-needed':
+                    return 'libnumeric.so' if Path(args[1]).name == 'model_calculate' else 'ld-linux-aarch64.so.1'
+                changes.append(args)
+                return ''
+            with patch('model_native_platforms.linux_dependencies', side_effect=[{'libnumeric.so': library}, {'libnumeric.so': package / 'bin/lib/libnumeric.so'}]):
+                executable = bundle_linux(engine, package, 'linux-arm64', run)
+            self.assertEqual(executable, package / 'bin/model_calculate')
+            self.assertEqual(sorted(p.name for p in (package / 'bin/lib').iterdir()), ['libnumeric.so'])
+            self.assertEqual([v[1] for v in changes], ['$ORIGIN/lib', '$ORIGIN'])
+
+    def test_windows_copies_transitive_dlls_and_rejects_missing_ambiguous_or_wrong_arch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / 'source'
+            source.mkdir()
+            for name in ['engine.exe', 'solver.dll', 'blas.dll', 'unused.dll']:
+                (source / name).write_text(name)
+            graph = {'engine.exe': ['KERNEL32.dll', 'solver.dll'], 'solver.dll': ['blas.dll', 'api-ms-win-core-synch-l1-2-0.dll'], 'blas.dll': []}
+            def run(tool, option, binary):
+                return '8664 machine (x64)' if option == '/headers' else '\n'.join(graph[Path(binary).name])
+            bundle_windows(source / 'engine.exe', root / 'package', [], run)
+            self.assertEqual(sorted(p.name for p in (root / 'package/bin').iterdir()), ['blas.dll', 'model_calculate.exe', 'solver.dll'])
+            with self.assertRaisesRegex(ValueError, 'x64 PE'):
+                bundle_windows(source / 'engine.exe', root / 'bad-arch', [], lambda *args: 'AA64 machine (ARM64)')
+            second = root / 'second'
+            second.mkdir()
+            (second / 'blas.dll').write_text('other')
+            with self.assertRaisesRegex(ValueError, 'ambiguous DLL'):
+                bundle_windows(source / 'engine.exe', root / 'ambiguous', [second], run)
+            (source / 'blas.dll').unlink()
+            with self.assertRaisesRegex(ValueError, 'Missing'):
+                bundle_windows(source / 'engine.exe', root / 'missing', [], run)
+
+    def test_runtime_environment_does_not_forward_library_search_or_credentials(self):
+        with patch.dict(os.environ, {'LD_LIBRARY_PATH': '/developer', 'DYLD_LIBRARY_PATH': '/developer', 'TOKEN': 'secret', 'PATH': '/developer', 'HOME': '/home/test'}, clear=True):
+            env = runtime_environment()
+            self.assertNotIn('TOKEN', env)
+            self.assertNotIn('LD_LIBRARY_PATH', env)
+            self.assertNotIn('DYLD_LIBRARY_PATH', env)
+            self.assertNotEqual(env['PATH'], '/developer')
+
+    @unittest.skipUnless(platform.system() == 'Linux', 'native Linux relocation case')
+    def test_native_linux_dependency_chain_survives_source_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / 'source'
+            source.mkdir()
+            def build(name, code, *flags):
+                c = source / (name + '.c')
+                c.write_text(code)
+                subprocess.run(['cc', str(c), *flags, '-o', str(source / name)], check=True, capture_output=True, timeout=60)
+            build('libchild.so', 'int child(void) { return 7; }', '-shared', '-fPIC', '-Wl,-soname,libchild.so')
+            build('libparent.so', 'extern int child(void); int parent(void) { return child()+1; }', '-shared', '-fPIC', '-L'+str(source), '-lchild', '-Wl,-soname,libparent.so', '-Wl,-rpath,'+str(source))
+            build('engine', 'extern int parent(void); int main(void) { return parent()==8 ? 0 : 1; }', '-L'+str(source), '-lparent', '-Wl,-rpath,'+str(source))
+            executable = bundle_linux(source / 'engine', root / 'installed', native_host(), command)
+            shutil.rmtree(source)
+            subprocess.run([str(executable)], env=runtime_environment(), check=True, timeout=10)
+
+    @unittest.skipUnless(platform.system() == 'Windows', 'native Windows x64 DLL case')
+    def test_native_windows_dependency_chain_survives_source_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / 'source'
+            source.mkdir()
+            def build(name, code, *flags):
+                c = source / (name + '.c')
+                c.write_text(code)
+                subprocess.run(['cl', '/nologo', '/MT', str(c), *flags, '/link', '/OUT:'+str(source / name)], cwd=source, check=True, capture_output=True, timeout=60)
+            build('child.dll', '__declspec(dllexport) int child(void) { return 7; }', '/LD')
+            build('parent.dll', '__declspec(dllimport) int child(void); __declspec(dllexport) int parent(void) { return child()+1; }', '/LD', str(source / 'child.lib'))
+            build('engine.exe', '__declspec(dllimport) int parent(void); int main(void) { return parent()==8 ? 0 : 1; }', str(source / 'parent.lib'))
+            executable = bundle_windows(source / 'engine.exe', root / 'installed', [], command)
+            shutil.rmtree(source)
+            subprocess.run([str(executable)], env=runtime_environment(), check=True, timeout=10)
+
+
+class QualificationTests(unittest.TestCase):
+    def test_numerical_oracle_rejects_wrong_impact_incomplete_or_invalid_residual(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / 'cache/lciamethods'
+            cache.mkdir(parents=True)
+            with gzip.open(cache / 'flow_factors.json.gz', 'wt', encoding='utf-8') as stream:
+                json.dump({CO2+':OUTPUT': {'@version': '03.00.004', 'factor': [{'key': METHOD, 'value': 1}]}}, stream)
+            for index, change in enumerate([{}, {'h': [0]}, {'completeLciaScores': False}, {'maxResidual': float('nan')}, {'maxResidual': -1}]):
+                def execute(args, **kwargs):
+                    run = Path(args[args.index('--output-dir')+1])
+                    run.mkdir()
+                    amount = json.loads(Path(args[args.index('--input')+1]).read_text())['amount']
+                    result = {'g': [amount*7], 'h': [amount*7], 'completeLciaScores': True, 'maxResidual': 0, **change}
+                    (run / 'result.json').write_text(json.dumps(result))
+                with patch('qualify_model_runtime.subprocess.run', side_effect=execute):
+                    if not change:
+                        receipt = qualify(root / 'engine', cache.parent, root / str(index))
+                        self.assertEqual([v['actualImpact'] for v in receipt['cases']], [21, 42])
+                    else:
+                        with self.assertRaises(ValueError):
+                            qualify(root / 'engine', cache.parent, root / str(index))
 
 
 if __name__ == '__main__':

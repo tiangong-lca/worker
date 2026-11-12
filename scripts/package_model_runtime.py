@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a relocatable local Model package on macOS ARM64; never publish it."""
+"""Build a relocatable local Model package on a supported native host; never publish it."""
 
 import argparse
 import gzip
@@ -7,15 +7,16 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import platform
 import shutil
 import subprocess
 import tarfile
 import tempfile
 
+from model_native_platforms import bundle_linux, bundle_windows, native_host, runtime_environment
+
 
 def command(*args):
-    return subprocess.run(args, check=True, capture_output=True, text=True, timeout=120).stdout
+    return subprocess.run(args, check=True, capture_output=True, text=True, timeout=120, env={**os.environ, "LC_ALL": "C"}).stdout
 
 
 def dependencies(binary):
@@ -154,16 +155,29 @@ def main():
     parser.add_argument("--engine", type=Path, required=True)
     parser.add_argument("--static-cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--library-dir", type=Path, action="append", default=[],
+                        help="Explicit Windows DLL directory; repeat for numerical and MSVC runtime libraries")
+    parser.add_argument("--notices", type=Path, help="Reviewed third-party notices directory to include")
     args = parser.parse_args()
-    if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
-        parser.error("Native package production currently qualifies macOS ARM64 only")
+    args.output = args.output.absolute()
+    host = native_host()
+    if args.library_dir and host != "win32-x64":
+        parser.error("--library-dir applies only to Windows DLL packaging")
     if args.output.exists():
         parser.error("Output must be a new directory")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="model-package-", dir=args.output.parent) as temporary:
         work = Path(temporary)
         root = work / "payload"
-        engine = bundle_native(args.engine.resolve(strict=True), root)
+        source = args.engine.resolve(strict=True)
+        if host == "darwin-arm64":
+            engine = bundle_native(source, root)
+        elif host.startswith("linux-"):
+            engine = bundle_linux(source, root, host, command)
+        else:
+            engine = bundle_windows(source, root, [p.resolve(strict=True) for p in args.library_dir], command)
+        if args.notices:
+            shutil.copytree(args.notices, root / "notices", dirs_exist_ok=True, symlinks=True)
         manifest_file = Path(__file__).resolve().parents[1] / "crates/solver-worker/src/lcia_static_cache_bundle_manifest.json"
         manifest = json.loads(manifest_file.read_text())
         asset_names = {"lciamethods/" + entry["path"] for entry in manifest["files"].values()}
@@ -173,7 +187,10 @@ def main():
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(args.static_cache / name, destination)
         # The real native loader checks the complete method/cache contract before packaging.
-        capability = json.loads(command(str(engine), "--check", "--static-cache", str(root / "cache")))
+        capability = json.loads(subprocess.run(
+            [str(engine), "--check", "--static-cache", str(root / "cache")],
+            check=True, capture_output=True, text=True, timeout=120,
+            cwd=work, env=runtime_environment()).stdout)
         if capability.get("status") != "ready" or capability.get("characterization") != "method-defined-sparse":
             raise ValueError("Engine lacks the required local Model capability")
         package = work / "package"
@@ -181,12 +198,12 @@ def main():
         output = package / "runtime.tar.gz"
         files = archive(root, output)
         (package / "manifest.json").write_text(json.dumps(dict(
-            schema="lca.model-runtime-package.v1", platform="darwin-arm64",
+            schema="lca.model-runtime-package.v1", platform=host,
             engineVersion=capability["engineVersion"], files=files,
             archive=dict(bytes=output.stat().st_size, sha256=digest(output))), indent=2) + "\n")
         publish(package, args.output)
     print(json.dumps(dict(status="packaged", directory=str(args.output.resolve()),
-                         platform="darwin-arm64", files=len(files), published=False)))
+                         platform=host, files=len(files), published=False)))
 
 
 if __name__ == "__main__":

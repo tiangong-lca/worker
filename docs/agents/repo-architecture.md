@@ -37,8 +37,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 269153c3b5b8a1143fa769b91e8dbe64241d470e
-lastReviewedNote: "Worker #370: reviewed native dependency relocation, exclusive package publication and cleanup, Python 3.10 compatibility, and package tests in local and CI gates."
+lastReviewedCommit: 416bca03b8cfa6d2e9a5b9fddb2c9e1f4299f393
+lastReviewedNote: "Worker #370: reviewed native Model package production and explicit numerical qualification for supported targets; platform simulation and compilation do not establish native execution or public release."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -291,4 +291,4 @@ This repository has a versioned local `pre-push` hook under `.githooks/pre-push`
 
 ## Local Model calculation adapter
 
-`study/local.rs` adapts editable canonical Model inputs and explicit aggregated backgrounds into the existing graph/compiler/core. `bin/model_calculate.rs` loads verified local factors and writes an independent Run. Local runtime budgets do not redefine hosted Study bounds or authorization. The [compiler contract](contracts/study-compiler-contract.md#independent-local-model-input) owns the local input and scientific boundary; `scripts/package_model_runtime.py` owns the macOS ARM64 native package producer, while CLI owns local installation and configuration. Shared compiler/core behavior remains independent of installation.
+`study/local.rs` adapts editable canonical Model inputs and explicit aggregated backgrounds into the existing graph/compiler/core. `bin/model_calculate.rs` loads verified local factors and writes an independent Run. Local runtime budgets do not redefine hosted Study bounds or authorization. The [compiler contract](contracts/study-compiler-contract.md#independent-local-model-input) owns the local input and scientific boundary; `scripts/package_model_runtime.py` owns native package production, with Linux/Windows dependency relocation in `scripts/model_native_platforms.py` and independent numerical qualification in `scripts/qualify_model_runtime.py`, while CLI owns local installation and configuration. Shared compiler/core behavior remains independent of installation.
