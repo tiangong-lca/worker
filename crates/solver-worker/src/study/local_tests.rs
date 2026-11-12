@@ -71,7 +71,7 @@ fn local_background_reuses_core_without_double_expansion_or_study_binding() {
     let prepared = compile(&input).unwrap();
     assert_eq!(prepared.profile_id, local::PROFILE);
     assert!(prepared.study_binding.is_none());
-    assert!(prepared.model.source_documents.is_empty());
+    assert_eq!(prepared.model.source_documents.len(), 0);
     let result = local::execute(&prepared).unwrap();
     assert_eq!(result.g, vec![7.0]);
     assert_eq!(result.h, vec![14.0]);
@@ -144,9 +144,9 @@ fn complete_empty_inventory_is_zero_without_inventing_a_flow_axis() {
         .unwrap()
         .pop();
     let prepared = compile(&input).unwrap();
-    assert!(prepared.numeric.inventory_axes.is_empty());
+    assert_eq!(prepared.numeric.inventory_axes.len(), 0);
     let result = local::execute(&prepared).unwrap();
-    assert!(result.g.is_empty());
+    assert_eq!(result.g.len(), 0);
     assert_eq!(result.h, vec![0.0]);
     assert!(result.complete_lcia_scores);
     input.backgrounds[0]["complete"] = json!(false);
@@ -210,7 +210,7 @@ fn method_specific_absence_is_normal_and_does_not_make_local_scores_incomplete()
     let mut selected = methods();
     selected.factors[0].clear();
     let prepared = local::prepare(&serde_json::to_vec(&input).unwrap(), &input, &selected).unwrap();
-    assert!(prepared.coverage.is_empty());
+    assert_eq!(prepared.coverage.len(), 0);
     let result = local::execute(&prepared).unwrap();
     assert_eq!(result.g, vec![7.0]);
     assert_eq!(result.h, vec![0.0]);

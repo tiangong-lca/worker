@@ -37,8 +37,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: d9f41462de4b5d45b2731c19e200c6c523459661
-lastReviewedNote: "Worker #370: reconciled local Model compilation and native packaging with Main Study method/advanced runtime and Linux RSS exit fixes; retained both module families, hosted authorization boundaries and separate platform qualification."
+lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
+lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

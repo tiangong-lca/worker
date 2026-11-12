@@ -16,7 +16,7 @@ fn describe_is_data_free_and_exposes_actual_local_capability() {
     assert_eq!(value["inputSchema"], "lca.model-input.v1");
     assert_eq!(value["characterization"], "method-defined-sparse");
     assert_eq!(value["limits"]["maxInstances"], 64);
-    assert!(!value["engineVersion"].as_str().expect("version").is_empty());
+    assert_ne!(value["engineVersion"].as_str().expect("version"), "");
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn setup_checks_reject_conflicting_modes_and_missing_cache_without_outputs() {
             .output()
             .expect("check");
         assert!(!output.status.success());
-        assert!(output.stdout.is_empty());
+        assert_eq!(output.stdout, Vec::<u8>::new());
         assert_eq!(
             std::fs::read_dir(directory.path()).expect("files").count(),
             0
