@@ -26,7 +26,7 @@ checkPaths:
   - docs/frontend-integration.md
   - docs/agents/contracts/scope-closure-memory-and-result-contract.md
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: e4998f4ac9bfe1b93723e4f1a287ef86d5b339ab
+lastReviewedCommit: 6af9a882405037e86b2a4059c0d3f0a37a50e110
 lastReviewedNote: "Worker #370: reviewed sparse local method characterization and data-free/native cache checks; historical hosted Study artifacts and authorization remain unchanged."
 related:
   - AGENTS.md

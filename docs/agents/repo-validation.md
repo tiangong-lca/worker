@@ -677,3 +677,27 @@ Real integration requires the Database/Edge owned Study runtime migrations and a
 ## Independent local Model proof
 
 Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and normal sparse method applicability. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds must be disclosed; normal absent method factors do not constitute incomplete scores. Source validation does not qualify an installed multi-platform engine or hosted API.
+
+### Local Model runtime packaging
+
+The package producer uses Python 3.11 or later and native macOS ARM64 developer
+tools (`otool`, `lipo`, `install_name_tool`, `codesign`). Build `model_calculate`
+with the repository toolchain, then supply an explicit complete static cache:
+
+```bash
+python3 scripts/package_model_runtime.py --engine target/debug/model_calculate --static-cache /absolute/static-cache --output /absolute/new-model-package
+python3 -m unittest discover -s scripts -p 'test_package_model_runtime.py'
+```
+
+The producer recursively relocates third-party dylibs, removes developer rpaths,
+ad-hoc signs modified binaries and runs the actual cache check before publishing
+the local directory. `manifest.json` and `runtime.tar.gz` carry a bounded regular
+file inventory; CLI verifies installation bytes internally. A new output directory
+is required; failed builds remove only their owned staging directory. The package
+contains installed library notices; public redistribution still requires release
+provenance, complete third-party/source-offer review and target qualification.
+
+Verify the installed engine with network and developer library/cache paths denied,
+including a real calculation rather than only `--describe`. The producer currently
+supports macOS ARM64; Linux and Windows packaging/execution qualification remains
+separate. A local package is not a published release or production deployment.

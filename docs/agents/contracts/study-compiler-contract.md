@@ -265,8 +265,10 @@ existing empty-axis admission rule. For this local profile, an absent factor in 
 The local executable reads an explicitly provided factor directory with the
 existing verified static loader, then invokes the shared compiler/core. No DB,
 queue, credentials, automatic provider selection, download or retry is required.
-`--describe` reports the input profile and resource defaults without loading data; `--check --static-cache <directory>` verifies the complete method cache and reports readiness without calculating or writing a Run. The binary still builds in `solver-worker`; it is a thin entrypoint, not a newly
-independent distribution package or hosted activation.
+`--describe` reports the input profile and resource defaults without loading data; `--check --static-cache <directory>` verifies the complete method cache and reports readiness without calculating or writing a Run. The binary builds in `solver-worker` as a thin entrypoint. The local package producer
+`scripts/package_model_runtime.py` bundles a macOS ARM64 executable, its relocated
+native dependency closure and verified method assets for CLI installation. This
+package does not activate hosted execution.
 
 Local `limits` fields are `maxInputBytes`, `maxDocuments`, `maxInstances`,
 `maxViews`, `maxExchanges`, `maxDenseCells`, `maxArtifactBytes`, `maxMemoryBytes`
