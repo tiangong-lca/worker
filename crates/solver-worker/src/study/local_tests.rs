@@ -216,3 +216,137 @@ fn method_specific_absence_is_normal_and_does_not_make_local_scores_incomplete()
     assert_eq!(result.h, vec![0.0]);
     assert!(result.complete_lcia_scores);
 }
+
+#[test]
+fn background_reference_is_not_relabelled_as_another_product_or_direction() {
+    for change in 0..5 {
+        let mut input = foreground_background();
+        let bg = &mut input.datasets[1]["processDataSet"];
+        match change {
+            0 => {
+                bg["processInformation"]["quantitativeReference"]["referenceToReferenceFlow"] =
+                    json!("original");
+            }
+            1 => bg["exchanges"]["exchange"][0]["referenceToFlowDataSet"]["@version"] = json!("2"),
+            2 => bg["exchanges"]["exchange"][0]["exchangeDirection"] = json!("Input"),
+            3 => {
+                bg["processInformation"]["quantitativeReference"]["referenceToReferenceFlow"] =
+                    json!("absent");
+            }
+            _ => {
+                let duplicate = bg["exchanges"]["exchange"][0].clone();
+                bg["exchanges"]["exchange"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(duplicate);
+            }
+        }
+        let error = compile(&input).unwrap_err().to_string();
+        assert!(
+            error.contains(if change < 3 {
+                "local_background_reference_mismatch"
+            } else {
+                "local_background_reference_missing"
+            }),
+            "{error}"
+        );
+        assert!(error.contains("instance=b"), "{error}");
+        if change < 3 {
+            assert!(error.contains("actual_flow=feed"), "{error}");
+        }
+    }
+}
+
+fn proxy_input(ratio: f64, direct: f64) -> ModelInput {
+    let mut input = foreground_background();
+    let flow = input
+        .datasets
+        .iter()
+        .find(|d| {
+            d["flowDataSet"]["flowInformation"]["dataSetInformation"]["common:UUID"] == "feed"
+        })
+        .unwrap()
+        .clone();
+    let mut adapted = flow;
+    adapted["flowDataSet"]["flowInformation"]["dataSetInformation"]["common:UUID"] =
+        json!("adapted");
+    input.datasets.push(adapted);
+    input.datasets[0]["processDataSet"]["exchanges"]["exchange"][1]["referenceToFlowDataSet"] =
+        reference("adapted");
+    let proxy = process(
+        "proxy",
+        vec![
+            raw_exchange("p", "adapted", "Output", 1.0),
+            raw_exchange("i", "feed", "Input", ratio),
+            raw_exchange("e", "emission", "Output", direct),
+        ],
+    );
+    input
+        .datasets
+        .push(serde_json::from_str(&proxy.json).unwrap());
+    let instances = &mut input.model["lifeCycleModelDataSet"]["lifeCycleModelInformation"]["technology"]
+        ["processes"]["processInstance"];
+    instances[1]["connections"]["outputExchange"] = json!([connection("feed", "c")]);
+    instances.as_array_mut().unwrap().push(instance(
+        "c",
+        "proxy",
+        json!([connection("adapted", "a")]),
+    ));
+    input
+}
+
+#[test]
+fn ordinary_proxy_and_physical_conversion_preserve_upstream_burdens() {
+    for (ratio, direct, expected) in [(1.0, 0.0, 7.0), (1.5, 0.0, 10.0), (1.5, 2.0, 14.0)] {
+        let mut input = proxy_input(ratio, direct);
+        // Foreground needs 2 adapted units and emits 1; background emits 6 per 2 feed.
+        // Independent inventory: 1 + 2 * (ratio * 3 + direct).
+        for demand in [1.0, 3.0] {
+            input.amount = demand;
+            let prepared = compile(&input).unwrap();
+            let result = local::execute(&prepared).unwrap();
+            assert_eq!(prepared.numeric.views.len(), 3);
+            assert_eq!(result.g, vec![expected * demand]);
+            assert_eq!(result.h, vec![2.0 * expected * demand]);
+        }
+    }
+}
+
+#[test]
+fn proxy_does_not_relax_exact_connection_ports_or_units() {
+    for change in 0..3 {
+        let mut input = proxy_input(1.0, 0.0);
+        match change {
+            0 => {
+                input.model["lifeCycleModelDataSet"]["lifeCycleModelInformation"]["technology"]["processes"]
+                    ["processInstance"][1]["connections"]["outputExchange"][0]["@version"] =
+                    json!("2");
+            }
+            1 => {
+                input.datasets[1]["processDataSet"]["exchanges"]["exchange"][0]["exchangeDirection"] =
+                    json!("Input");
+            }
+            _ => {
+                input.backgrounds[0]["data"]["result"]["quantitativeReference"]["unit"]["name"] =
+                    json!("g");
+            }
+        }
+        let error = compile(&input).unwrap_err().to_string();
+        if change == 0 {
+            assert!(
+                error.contains("instance=b flow=feed version=2 direction=Output matches=0"),
+                "{error}"
+            );
+        } else if change == 1 {
+            assert!(
+                error.contains("local_background_reference_mismatch"),
+                "{error}"
+            );
+        } else {
+            assert!(
+                error.contains("study_connection_identity_mismatch"),
+                "{error}"
+            );
+        }
+    }
+}

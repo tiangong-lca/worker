@@ -26,8 +26,8 @@ checkPaths:
   - docs/frontend-integration.md
   - docs/agents/contracts/scope-closure-memory-and-result-contract.md
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cc82025cd2e4c0941d61825cac541e0563fa4d
-lastReviewedNote: "Worker #372: reviewed native Model publication and corresponding-source evidence; hosted jobs and calculation contracts remain unchanged."
+lastReviewedCommit: a65ac1856d952a03f3364924dd9e3929675f9af6
+lastReviewedNote: "Worker #374: reviewed background reference identity validation and ordinary conversion regressions; hosted contracts and numerical solver are unchanged."
 related:
   - AGENTS.md
   - .docpact/config.yaml

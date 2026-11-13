@@ -113,7 +113,12 @@ fn port_for_flow(
         .collect::<Vec<_>>();
     ensure!(
         matches.len() == 1,
-        "study_ambiguous_or_missing_exchange_port"
+        "study_ambiguous_or_missing_exchange_port instance={} flow={} version={} direction={} matches={}",
+        instance.id,
+        flow_id,
+        version,
+        direction,
+        matches.len()
     );
     Ok(Port {
         instance_id: instance.id.clone(),
@@ -194,6 +199,43 @@ pub(super) fn normalize(
     )
 }
 
+// Background quantities are already normalized; compare the selected port's meaning,
+// never require the original Process amount to equal the published LCI pivot.
+fn validate_background_reference(
+    data: &Value,
+    instance_id: &str,
+    reference_id: &str,
+    background: &Exchange,
+) -> anyhow::Result<()> {
+    let exchanges = items(&data["exchanges"]["exchange"]);
+    let selected = exchanges
+        .iter()
+        .filter(|e| text(&e["@dataSetInternalID"]).ok().as_deref() == Some(reference_id))
+        .collect::<Vec<_>>();
+    ensure!(
+        selected.len() == 1,
+        "local_background_reference_missing instance={} reference={} matches={}",
+        instance_id,
+        reference_id,
+        selected.len()
+    );
+    let expected = reference(&selected[0]["referenceToFlowDataSet"])?;
+    let direction = text(&selected[0]["exchangeDirection"])?;
+    ensure!(
+        expected == background.flow && direction == background.direction,
+        "local_background_reference_mismatch instance={} reference={} expected_flow={} expected_version={} expected_direction={} actual_flow={} actual_version={} actual_direction={}",
+        instance_id,
+        reference_id,
+        expected.id,
+        expected.version,
+        direction,
+        background.flow.id,
+        background.flow.version,
+        background.direction
+    );
+    Ok(())
+}
+
 /// Shared graph normalization; local projections never invent server state/owner receipts.
 #[allow(clippy::too_many_lines)]
 pub(super) fn normalize_graph(
@@ -252,6 +294,10 @@ pub(super) fn normalize_graph(
         if let Some(background) = backgrounds.get(&(process.id.clone(), process.version.clone())) {
             count += background.len();
             ensure!(count <= bounds.max_exchanges, "study_exchange_limit");
+            let reference = background
+                .first()
+                .context("local_background_reference_missing")?;
+            validate_background_reference(data, &id, &reference_exchange_id, reference)?;
             let mut exchanges = background.clone();
             exchanges[0].id.clone_from(&reference_exchange_id);
             for (index, exchange) in exchanges.iter_mut().enumerate().skip(1) {

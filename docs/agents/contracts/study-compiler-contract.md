@@ -253,6 +253,20 @@ Process exchanges; it is scaled against its published reference quantity and is
 never expanded or allocated a second time. Duplicate/mismatched/incomplete
 backgrounds, unused backgrounds, ambiguous connections and conflicting units on
 a shared inventory axis fail explicitly. Source metadata does not link providers.
+Before assigning a source reference exchange ID to the published background port,
+normalization requires exactly one source exchange at that ID with the same Flow
+ID/version and direction. A mismatch reports the instance, reference and expected
+versus actual identities. Original source amounts need not equal the published LCI
+pivot: the latter remains the normalization basis. Background units remain the
+published units; existing connection and inventory-axis checks reject conflicting
+unit/property identities without requiring the background's original upstream closure.
+
+An ordinary local Process can consume background Flow B and supply foreground
+Flow A with an explicit ratio. Additional physical burdens are ordinary exchanges;
+a zero-direct-burden proxy still carries its upstream inventory. Every edge retains
+exact port identity/unit checks. The engine does not infer equivalence or approve
+proxy assumptions, and no new Process type or solver mode is introduced.
+
 Location/function group rows use the existing nonregional Flow/version/direction
 axes; provenance remains in the Run's original input.
 
