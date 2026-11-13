@@ -41,9 +41,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
-lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
+lastReviewedAt: 2026-11-13
+lastReviewedCommit: 64cc82025cd2e4c0941d61825cac541e0563fa4d
+lastReviewedNote: "Worker #372: reviewed native Model publication and corresponding-source evidence; hosted jobs and calculation contracts remain unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -821,7 +821,9 @@ PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py
 On Windows, use `python`, the `.exe` engine name and the explicit DLL directories.
 `--notices <reviewed-directory>` includes third-party notices; automatically
 collected macOS notices are retained. Public redistribution still requires the
-complete native library license/source-offer review and release provenance.
+complete native library license/source review and release provenance.
+The [public release runbook](model-runtime-release.md) defines the native matrix,
+corresponding-source collection, pre-publication verification and public install proof.
 
 `manifest.json` and `runtime.tar.gz` contain a bounded regular-file inventory;
 CLI verifies its bytes internally. Readiness executes the packaged engine with

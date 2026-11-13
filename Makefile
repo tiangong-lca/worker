@@ -7,7 +7,7 @@ fmt-check:
 	cargo fmt --all -- --check
 
 qualification-test:
-	PYTHONPATH=scripts python3 -m unittest scripts/test_scope_closure_qualification.py scripts/test_ci_native_fingerprint.py scripts/test_validate_lcia_targets.py scripts/test_package_model_runtime.py
+	PYTHONPATH=scripts python3 -m unittest scripts/test_scope_closure_qualification.py scripts/test_ci_native_fingerprint.py scripts/test_validate_lcia_targets.py scripts/test_package_model_runtime.py scripts/test_verify_model_release_assets.py
 
 study-p0-check:
 	python3 scripts/check_study_p0_benchmarks.py

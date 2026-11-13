@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
-lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
+lastReviewedAt: "2026-11-13"
+lastReviewedCommit: "64cc82025cd2e4c0941d61825cac541e0563fa4d"
+lastReviewedNote: "Worker #372: reviewed native Model publication and corresponding-source evidence; hosted jobs and calculation contracts remain unchanged."
 
 # Keep deterministic governance facts here.
 # AGENTS.md remains the repo contract entrypoint.
@@ -14,6 +14,7 @@ catalog:
       canonicalRepo: tiangong-lca/worker
       entryDoc: AGENTS.md
       workflowDocs:
+        - docs/agents/model-runtime-release.md
         - docs/agents/repo-validation.md
         - docs/agents/repo-architecture.md
         - docs/agents/dependency-maintenance.md
@@ -57,6 +58,8 @@ ownership:
           - Makefile
           - crates/**
           - .github/workflows/ci.yml
+          - .github/workflows/model-runtime.yml
+          - model-runtime-version.txt
       ownerRepo: worker
     - id: validation-debug-and-diagnostics-tooling
       paths:
@@ -119,6 +122,9 @@ coverage:
     - supabase/migrations/**
     - .github/workflows/ai-doc-lint.yml
     - .github/workflows/ci.yml
+    - .github/workflows/model-runtime.yml
+    - model-runtime-version.txt
+    - docs/agents/model-runtime-release.md
     - .github/workflows/python-validator.yml
     - .github/dependabot.yml
   exclude:
@@ -818,3 +824,24 @@ rules:
       - path: docs/agents/repo-validation.md
         mode: review_or_update
     reason: Local push documentation governance gates must stay aligned with repo validation guidance and docpact configuration.
+
+  - id: model-runtime-release
+    scope: repo
+    repo: worker
+    triggers:
+      - path: docs/agents/model-runtime-release.md
+        kind: native-runtime-release-guide
+      - path: .github/workflows/model-runtime.yml
+        kind: native-runtime-release
+      - path: model-runtime-version.txt
+        kind: native-runtime-version
+      - path: scripts/collect_model_release_sources.py
+        kind: native-runtime-sources
+      - path: scripts/verify_model_release_assets.py
+        kind: native-runtime-verification
+    requiredDocs:
+      - path: docs/agents/model-runtime-release.md
+        mode: review_or_update
+      - path: docs/agents/repo-validation.md
+        mode: review_or_update
+    reason: Public Model packages require native execution proof and corresponding source tied to the exact release source.

@@ -25,9 +25,9 @@ checkPaths:
   - docs/edge-function-integration.md
   - docs/frontend-integration.md
   - docs/agents/contracts/scope-closure-memory-and-result-contract.md
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
-lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
+lastReviewedAt: 2026-11-13
+lastReviewedCommit: 64cc82025cd2e4c0941d61825cac541e0563fa4d
+lastReviewedNote: "Worker #372: reviewed native Model publication and corresponding-source evidence; hosted jobs and calculation contracts remain unchanged."
 related:
   - AGENTS.md
   - .docpact/config.yaml
