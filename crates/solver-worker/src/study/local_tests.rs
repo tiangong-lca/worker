@@ -350,3 +350,98 @@ fn proxy_does_not_relax_exact_connection_ports_or_units() {
         }
     }
 }
+
+fn signed_background(
+    supplier_direction: &str,
+    supplier_sign: f64,
+    consumer_direction: &str,
+    consumer_amount: f64,
+    aggregate: bool,
+) -> ModelInput {
+    let mut input = foreground_background();
+    if supplier_direction == "Input" {
+        let flow = input
+            .datasets
+            .iter_mut()
+            .find(|d| {
+                d["flowDataSet"]["flowInformation"]["dataSetInformation"]["common:UUID"] == "feed"
+            })
+            .unwrap();
+        flow["flowDataSet"]["modellingAndValidation"]["LCIMethod"]["typeOfDataSet"] =
+            json!("Waste flow");
+    }
+    let fg = &mut input.datasets[0]["processDataSet"]["exchanges"]["exchange"][1];
+    fg["exchangeDirection"] = json!(consumer_direction);
+    fg["resultingAmount"] = json!(consumer_amount);
+    let bg = &mut input.datasets[1]["processDataSet"]["exchanges"]["exchange"];
+    bg[0]["exchangeDirection"] = json!(supplier_direction);
+    bg[0]["resultingAmount"] = json!(supplier_sign);
+    bg[1]["resultingAmount"] = json!(3.0);
+    let reference = &mut input.backgrounds[0]["data"]["result"]["quantitativeReference"];
+    reference["direction"] = json!(supplier_direction);
+    reference["value"] = json!(supplier_sign * 2.0);
+    let edge = &mut input.model["lifeCycleModelDataSet"]["lifeCycleModelInformation"]["technology"]
+        ["processes"]["processInstance"][1]["connections"]["outputExchange"][0];
+    // Explicit ports permit treatment inputs and signed outputs; field names do not imply signs.
+    edge["@exchangeId"] = json!("p");
+    edge["downstreamProcess"]["@exchangeId"] = json!("i");
+    if !aggregate {
+        input.backgrounds.clear();
+    }
+    input
+}
+
+#[test]
+fn signed_connections_balance_supply_treatment_and_negative_quantities() {
+    for aggregate in [false, true] {
+        for (sd, sa, cd, ca) in [
+            ("Output", 1.0, "Input", 2.0),
+            ("Input", 1.0, "Output", 2.0),
+            ("Output", -1.0, "Output", 2.0),
+            ("Input", -1.0, "Input", 2.0),
+            ("Input", 1.0, "Input", -2.0),
+            ("Output", 1.0, "Output", -2.0),
+        ] {
+            let mut input = signed_background(sd, sa, cd, ca, aggregate);
+            for demand in [1.0, 3.0] {
+                input.amount = demand;
+                let result = local::execute(&compile(&input).unwrap()).unwrap();
+                // 1 direct + abs(2) * 3 upstream; negative pivots do not invert burdens.
+                assert_eq!(result.g, vec![7.0 * demand]);
+                assert_eq!(result.h, vec![14.0 * demand]);
+                assert!(result.x.iter().all(|v| *v >= 0.0));
+            }
+        }
+    }
+}
+
+#[test]
+fn same_signed_ports_explain_both_sides_without_rewriting_amounts() {
+    for aggregate in [false, true] {
+        for (sd, sa, cd, ca) in [
+            ("Output", 1.0, "Output", 2.0),
+            ("Input", 1.0, "Input", 2.0),
+            ("Output", -1.0, "Input", 2.0),
+            ("Input", -1.0, "Output", 2.0),
+        ] {
+            let input = signed_background(sd, sa, cd, ca, aggregate);
+            let original = serde_json::to_value(&input).unwrap();
+            let error = compile(&input).unwrap_err().to_string();
+            assert!(
+                error.starts_with("study_connection_direction_mismatch flow=feed version=1"),
+                "{error}"
+            );
+            assert!(error.contains(&format!("supplier_instance=b supplier_exchange=p supplier_direction={sd} supplier_amount=")), "{error}");
+            assert!(error.contains(&format!("consumer_instance=a consumer_exchange=i consumer_direction={cd} consumer_amount={ca:e} consumer_coefficient=")), "{error}");
+            assert!(error.contains("supplier_coefficient="), "{error}");
+            assert_eq!(serde_json::to_value(&input).unwrap(), original);
+        }
+    }
+    // A zero demand has no sign to balance; a zero reference is still invalid.
+    let zero = signed_background("Output", 1.0, "Input", 0.0, true);
+    assert_eq!(
+        local::execute(&compile(&zero).unwrap()).unwrap().g,
+        vec![1.0]
+    );
+    assert!(compile(&signed_background("Output", 0.0, "Input", 2.0, true)).is_err());
+}

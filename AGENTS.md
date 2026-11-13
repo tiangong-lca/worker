@@ -43,8 +43,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: a65ac1856d952a03f3364924dd9e3929675f9af6
-lastReviewedNote: "Worker #374: reviewed background reference identity validation and ordinary conversion regressions; hosted contracts and numerical solver are unchanged."
+lastReviewedCommit: 12378534d9b8d460855d854dc9d65c328f98382f
+lastReviewedNote: "Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged."
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
