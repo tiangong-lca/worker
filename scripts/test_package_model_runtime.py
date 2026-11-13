@@ -15,10 +15,24 @@ from unittest.mock import patch
 
 from qualify_model_runtime import qualify, CO2, METHOD
 from model_native_platforms import native_host, linux_dependencies, bundle_linux, windows_dependencies, bundle_windows, runtime_environment
-from package_model_runtime import command, archive, bundle_native, dependencies, publish, resolve_library, rpaths, system_library
+from package_model_runtime import check_engine, command, archive, bundle_native, dependencies, publish, resolve_library, rpaths, system_library
 
 
 class PackageTests(unittest.TestCase):
+    def test_reviewed_manifest_bytes_survive_windows_checkout(self):
+        root = Path(__file__).resolve().parents[1]
+        path = 'crates/solver-worker/src/lcia_static_cache_bundle_manifest.json'
+        canonical = subprocess.check_output(['git', 'show', 'HEAD:' + path], cwd=root)
+        windows = subprocess.check_output(['git', '-c', 'core.autocrlf=true', 'cat-file', '--filters', 'HEAD:' + path], cwd=root)
+        self.assertEqual(windows, canonical)
+
+    def test_engine_self_check_preserves_native_failure_diagnostic(self):
+        result = subprocess.CompletedProcess([], 101, '', 'reviewed manifest raw SHA-256 drift')
+        with patch('package_model_runtime.subprocess.run', return_value=result):
+            with self.assertRaisesRegex(ValueError, '101.*reviewed manifest raw SHA-256 drift'):
+                check_engine(Path('engine'), Path('cache'), Path('.'))
+
+
     def test_archive_is_exact_regular_inventory_and_preserves_data(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "root"
@@ -254,7 +268,11 @@ class PlatformTests(unittest.TestCase):
             def build(name, code, *flags):
                 c = source / (name + '.c')
                 c.write_text(code)
-                subprocess.run(['cl', '/nologo', '/MT', str(c), *flags, '/link', '/OUT:'+str(source / name)], cwd=source, check=True, capture_output=True, timeout=60)
+                link = ['/OUT:' + str(source / name)]
+                if name.endswith('.dll'):
+                    link.append('/IMPLIB:' + str(source / (Path(name).stem + '.lib')))
+                result = subprocess.run(['cl', '/nologo', '/MT', str(c), *flags, '/link', *link], cwd=source, capture_output=True, text=True, timeout=60)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             build('child.dll', '__declspec(dllexport) int child(void) { return 7; }', '/LD')
             build('parent.dll', '__declspec(dllimport) int child(void); __declspec(dllexport) int parent(void) { return child()+1; }', '/LD', str(source / 'child.lib'))
             build('engine.exe', '__declspec(dllimport) int parent(void); int main(void) { return parent()==8 ? 0 : 1; }', str(source / 'parent.lib'))

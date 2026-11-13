@@ -36,9 +36,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: cbc498fd5d1672e8c2c5a5b225daf8a3a4a4c08d
-lastReviewedNote: "Worker #370: reviewed local Model empty/nonempty assertions for CI Rust 1.99 Clippy; numerical expectations, runtime behavior and platform qualification boundaries remain unchanged."
+lastReviewedAt: 2026-11-13
+lastReviewedCommit: 64cc82025cd2e4c0941d61825cac541e0563fa4d
+lastReviewedNote: "Worker #372: reviewed native Model publication and corresponding-source evidence; hosted jobs and calculation contracts remain unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -302,3 +302,8 @@ This repository has a versioned local `pre-push` hook under `.githooks/pre-push`
 ## Local Model calculation adapter
 
 `study/local.rs` adapts editable canonical Model inputs and explicit aggregated backgrounds into the existing graph/compiler/core. `bin/model_calculate.rs` loads verified local factors and writes an independent Run. Local runtime budgets do not redefine hosted Study bounds or authorization. The [compiler contract](contracts/study-compiler-contract.md#independent-local-model-input) owns the local input and scientific boundary; `scripts/package_model_runtime.py` owns native package production, with Linux/Windows dependency relocation in `scripts/model_native_platforms.py` and independent numerical qualification in `scripts/qualify_model_runtime.py`, while CLI owns local installation and configuration. Shared compiler/core behavior remains independent of installation.
+
+Public local Model distribution is owned by `.github/workflows/model-runtime.yml`,
+with corresponding-source collection and complete-matrix verification in
+`scripts/collect_model_release_sources.py` and `scripts/verify_model_release_assets.py`.
+The [release runbook](model-runtime-release.md) keeps publication separate from hosted execution.
