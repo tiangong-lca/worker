@@ -355,7 +355,19 @@ pub(super) fn compile_model(
         let c = signed_coefficient(direction(&consumer.direction), consumer.amount)?;
         ensure!(
             (s != 0.0 && s.is_sign_positive() != c.is_sign_positive()) || c == 0.0,
-            "study_connection_direction_mismatch"
+            "study_connection_direction_mismatch flow={} version={} supplier_instance={} supplier_exchange={} supplier_direction={} supplier_amount={:e} supplier_coefficient={:e} consumer_instance={} consumer_exchange={} consumer_direction={} consumer_amount={:e} consumer_coefficient={:e}",
+            supplier.flow.id,
+            supplier.flow.version,
+            e.supplier.instance_id,
+            e.supplier.exchange_id,
+            supplier.direction,
+            supplier.amount,
+            s,
+            e.consumer.instance_id,
+            e.consumer.exchange_id,
+            consumer.direction,
+            consumer.amount,
+            c
         );
         ports.insert(key(&e.supplier), e.supplier.clone());
     }

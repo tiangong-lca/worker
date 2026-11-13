@@ -42,8 +42,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cc82025cd2e4c0941d61825cac541e0563fa4d
-lastReviewedNote: "Worker #372: reviewed native Model publication and corresponding-source evidence; hosted jobs and calculation contracts remain unchanged."
+lastReviewedCommit: a65ac1856d952a03f3364924dd9e3929675f9af6
+lastReviewedNote: "Worker #374: reviewed background reference identity validation and ordinary conversion regressions; hosted contracts and numerical solver are unchanged."
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -785,7 +785,7 @@ Windows service execution or byte-identical cross-platform numerical output.
 
 ## Independent local Model proof
 
-Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and normal sparse method applicability. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds must be disclosed; normal absent method factors do not constitute incomplete scores. Source validation does not qualify an installed multi-platform engine or hosted API.
+Require shared Study regressions plus `study::tests::local_tests`: editable input, configurable budgets, no fabricated Study identity, background replacement/scaling, exact source-reference Flow/version/direction agreement before replacement, ambiguous/missing reference IDs, ordinary proxy/conversion ratios and additional direct burdens, signed supply/treatment/negative-quantity pairs for raw and aggregate backgrounds, same-sign diagnostics and unchanged inputs, complete empty versus incomplete inventory, unit conflicts, missing explicit connections and normal sparse method applicability. An actual local binary run must use the configured static cache and preserve input/result files. Real online background acquisition and network-disabled local execution are separate evidence; synthetic foregrounds must be disclosed; normal absent method factors do not constitute incomplete scores. Source validation does not qualify an installed multi-platform engine or hosted API.
 
 ### Local Model runtime packaging
 

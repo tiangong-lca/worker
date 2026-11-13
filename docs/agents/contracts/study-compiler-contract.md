@@ -49,7 +49,10 @@ frozen StudyBinding. Embedded source UUID/version must match the descriptor.
 The compiler parses the actual TIDAS processInstance graph and exchanges; it does
 not accept preassembled A/B/C as a source model. Connection Flow versions must
 be explicit. When a Flow selects multiple same-direction exchanges, the model
-must specify `@exchangeId`; no ambiguous first-match fallback is used.
+must specify `@exchangeId`; no ambiguous first-match fallback is used. Without
+selectors, connection discovery chooses Output on the supplier and Input on the
+consumer. Treatment inputs or other signed ports require explicit selectors;
+`outputExchange` is a connection field name, not a positive-coefficient rule.
 
 Source documents also carry server-resolved `stateCode` and `ownerActorId`, with
 an optional SourceInput `actorId`. The compiler rejects reserved/public Result
@@ -92,8 +95,15 @@ materialized twice. Companion product views are independent allocated systems;
 this profile does not assert physical co-production or expand implicit suppliers.
 
 A signed reference normalizes by absolute amount, retaining an Input/treatment
-negative pivot. Connected supply and consumption must have opposite signed
-coefficients and exact Flow/unit identity. Multiple providers per consumer port
+negative pivot. Input contributes minus its amount; Output contributes its amount.
+Connected nonzero supply and consumption must have opposite signed coefficients
+and exact Flow/unit identity. Same direction labels can balance when amount signs
+differ; opposite direction labels alone do not guarantee eligibility. Zero demand
+has no sign requirement; reference pivots remain finite and nonzero. A
+`study_connection_direction_mismatch` names the shared Flow/version and both
+instances, exchanges, directions, amounts and signed coefficients. Numeric fields
+use scientific notation; consumers expose only bounded recognized diagnostics.
+Neither the check nor its recovery changes input signs. Multiple providers per consumer port
 are unsupported. Every nonzero unconnected non-reference technosphere exchange
 requires an explicit located cutoff or declared supply boundary. Cutoff reasons
 remain frozen evidence; no provider inference is performed.
@@ -253,6 +263,20 @@ Process exchanges; it is scaled against its published reference quantity and is
 never expanded or allocated a second time. Duplicate/mismatched/incomplete
 backgrounds, unused backgrounds, ambiguous connections and conflicting units on
 a shared inventory axis fail explicitly. Source metadata does not link providers.
+Before assigning a source reference exchange ID to the published background port,
+normalization requires exactly one source exchange at that ID with the same Flow
+ID/version and direction. A mismatch reports the instance, reference and expected
+versus actual identities. Original source amounts need not equal the published LCI
+pivot: the latter remains the normalization basis. Background units remain the
+published units; existing connection and inventory-axis checks reject conflicting
+unit/property identities without requiring the background's original upstream closure.
+
+An ordinary local Process can consume background Flow B and supply foreground
+Flow A with an explicit ratio. Additional physical burdens are ordinary exchanges;
+a zero-direct-burden proxy still carries its upstream inventory. Every edge retains
+exact port identity/unit checks. The engine does not infer equivalence or approve
+proxy assumptions, and no new Process type or solver mode is introduced.
+
 Location/function group rows use the existing nonregional Flow/version/direction
 axes; provenance remains in the Run's original input.
 
