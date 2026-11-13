@@ -17,7 +17,7 @@ checkPaths:
   - scripts/verify_model_release_assets.py
   - scripts/package_model_runtime.py
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cc82025cd2e4c0941d61825cac541e0563fa4d
+lastReviewedCommit: 28c170608d5a1cac46d0f16365ab40cf9a87be86
 related:
   - repo-validation.md
   - contracts/study-compiler-contract.md
