@@ -254,7 +254,11 @@ class PlatformTests(unittest.TestCase):
             def build(name, code, *flags):
                 c = source / (name + '.c')
                 c.write_text(code)
-                subprocess.run(['cl', '/nologo', '/MT', str(c), *flags, '/link', '/OUT:'+str(source / name)], cwd=source, check=True, capture_output=True, timeout=60)
+                link = ['/OUT:' + str(source / name)]
+                if name.endswith('.dll'):
+                    link.append('/IMPLIB:' + str(source / (Path(name).stem + '.lib')))
+                result = subprocess.run(['cl', '/nologo', '/MT', str(c), *flags, '/link', *link], cwd=source, capture_output=True, text=True, timeout=60)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             build('child.dll', '__declspec(dllexport) int child(void) { return 7; }', '/LD')
             build('parent.dll', '__declspec(dllimport) int child(void); __declspec(dllexport) int parent(void) { return child()+1; }', '/LD', str(source / 'child.lib'))
             build('engine.exe', '__declspec(dllimport) int parent(void); int main(void) { return parent()==8 ? 0 : 1; }', str(source / 'parent.lib'))

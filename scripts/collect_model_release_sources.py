@@ -76,9 +76,12 @@ def mac_sources(engine, source, notices):
         expected = stable + ('_' + str(revision) if revision else '')
         if installed_version != expected:
             raise ValueError(f'Installed {formula} {installed_version} differs from source recipe {expected}')
-        subprocess.run(['brew', 'fetch', '--build-from-source', formula], check=True)
-        archive = Path(run('brew', '--cache', '--build-from-source', formula))
-        shutil.copy2(archive, source / (formula + '-' + archive.name))
+        # Preserve every fetched source/resource/patch, not only the main tarball.
+        cache = source / (formula + '-downloads')
+        subprocess.run(['brew', 'fetch', '--build-from-source', formula], check=True,
+                       env={**os.environ, 'HOMEBREW_CACHE': str(cache), 'HOMEBREW_NO_AUTO_UPDATE': '1'})
+        if not list(cache.rglob('*')):
+            raise ValueError('Homebrew source downloads are missing')
         prefix = cellar / formula / installed_version
         shutil.copytree(prefix / '.brew', source / (formula + '-recipe'))
         for notice in prefix.glob('*'):
