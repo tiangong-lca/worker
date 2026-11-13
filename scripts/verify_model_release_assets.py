@@ -10,9 +10,9 @@ import tarfile
 PLATFORMS = ('darwin-arm64', 'linux-x64', 'linux-arm64', 'win32-x64')
 
 
-def verify(directory, commit):
+def verify(directory, commit, cli_version):
     expected = {f'model-runtime-{p}{suffix}' for p in PLATFORMS for suffix in
-                ('.tar.gz', '-sources.tar.gz', '-qualification.json', '-provenance.json')}
+                ('.tar.gz', '-sources.tar.gz', '-qualification.json', '-cli-qualification.json', '-provenance.json')}
     if {p.name for p in directory.iterdir()} != expected:
         raise ValueError('Release must contain exactly four complete platform asset sets')
     for platform in PLATFORMS:
@@ -28,6 +28,11 @@ def verify(directory, commit):
         for case, amount in zip(proof['cases'], (3, 6), strict=True):
             if case['functionalAmount'] != amount or case['expectedInventoryAndImpact'] != amount * 7 or not math.isclose(case['actualImpact'], amount * 7, rel_tol=1e-12):
                 raise ValueError('Native oracle mismatch')
+        consumer = json.loads(Path(str(prefix) + '-cli-qualification.json').read_text())
+        required = {'setup model-calculation', 'dataset model prepare', 'dataset model calculate',
+                    'calculation get', 'calculation result', 'report render'}
+        if consumer['status'] != 'passed' or consumer['isolatedState'] is not True or consumer['actualImpacts'] != [21, 42] or consumer['cliVersion'] != cli_version or not required.issubset(consumer['operations']):
+            raise ValueError('Public CLI consumer qualification is missing or invalid')
         with tarfile.open(str(prefix) + '.tar.gz') as package:
             members = {m.name.removeprefix('./'): m for m in package.getmembers() if m.isfile()}
             if set(members) != {'manifest.json', 'runtime.tar.gz'}:
@@ -56,5 +61,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--commit', required=True)
+    parser.add_argument('--cli-version', required=True)
     args = parser.parse_args()
-    print(json.dumps(verify(args.directory, args.commit)))
+    print(json.dumps(verify(args.directory, args.commit, args.cli_version)))

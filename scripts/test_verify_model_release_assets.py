@@ -31,6 +31,10 @@ class ReleaseAssetsTest(unittest.TestCase):
             (self.root / (stem + '-qualification.json')).write_text(json.dumps(dict(
                 status='passed', platform=platform, developerLibraryEnvironmentRemoved=True,
                 cases=[dict(functionalAmount=a, expectedInventoryAndImpact=a*7, actualImpact=a*7) for a in (3, 6)])))
+            (self.root / (stem + '-cli-qualification.json')).write_text(json.dumps(dict(
+                status='passed', isolatedState=True, cliVersion='0.2.1', actualImpacts=[21, 42],
+                operations=['setup model-calculation', 'dataset model prepare', 'dataset model calculate',
+                            'calculation get', 'calculation result', 'report render'])))
             payload = b'fixture archive'
             archive(self.root / (stem + '.tar.gz'), {
                 'manifest.json': dict(schema='lca.model-runtime-package.v1', platform=platform,
@@ -41,16 +45,24 @@ class ReleaseAssetsTest(unittest.TestCase):
                 'sources/worker/Cargo.lock': b'fixture', 'sources/cargo-vendor-config.toml': b'fixture', 'notices/SOURCE.txt': b'fixture'})
 
     def test_complete_native_matrix(self):
-        self.assertEqual(verify(self.root, self.commit)['status'], 'passed')
+        self.assertEqual(verify(self.root, self.commit, '0.2.1')['status'], 'passed')
 
     def test_missing_platform_cannot_publish(self):
         (self.root / 'model-runtime-win32-x64.tar.gz').unlink()
         with self.assertRaisesRegex(ValueError, 'exactly four'):
-            verify(self.root, self.commit)
+            verify(self.root, self.commit, '0.2.1')
+
+    def test_missing_public_consumer_operation_cannot_publish(self):
+        file = self.root / 'model-runtime-win32-x64-cli-qualification.json'
+        data = json.loads(file.read_text())
+        data['operations'].remove('report render')
+        file.write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError, 'consumer'):
+            verify(self.root, self.commit, '0.2.1')
 
     def test_other_commit_cannot_publish(self):
         with self.assertRaisesRegex(ValueError, 'provenance'):
-            verify(self.root, 'b' * 40)
+            verify(self.root, 'b' * 40, '0.2.1')
 
     def test_incorrect_numerical_receipt_cannot_publish(self):
         file = self.root / 'model-runtime-linux-x64-qualification.json'
@@ -58,13 +70,13 @@ class ReleaseAssetsTest(unittest.TestCase):
         receipt['cases'][1]['actualImpact'] = 41
         file.write_text(json.dumps(receipt))
         with self.assertRaisesRegex(ValueError, 'oracle'):
-            verify(self.root, self.commit)
+            verify(self.root, self.commit, '0.2.1')
 
     def test_mismatched_source_cannot_publish(self):
         archive(self.root / 'model-runtime-darwin-arm64-sources.tar.gz', {
             'sources/components.json': dict(sourceCommit='b'*40, platform='darwin-arm64', native=['fixture'], crates=['fixture'])})
         with self.assertRaisesRegex(ValueError, 'source identity'):
-            verify(self.root, self.commit)
+            verify(self.root, self.commit, '0.2.1')
 
 
 if __name__ == '__main__':

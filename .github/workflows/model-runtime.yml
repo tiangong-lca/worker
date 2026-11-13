@@ -15,6 +15,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  MODEL_CLI_VERSION: 0.2.1
+
 jobs:
   native-package:
     strategy:
@@ -95,6 +98,18 @@ jobs:
           New-Item -ItemType Directory installed
           tar -xzf model-package/runtime.tar.gz -C installed
           python scripts/qualify_model_runtime.py --engine installed/bin/model_calculate.exe --static-cache installed/cache --output qualification
+      - name: Set up the released CLI toolchain
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          runtime: node@24.19.0
+          install: false
+      - name: Verify public CLI installation, calculation and report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir cli-consumer
+          (cd cli-consumer && pnpm --ignore-workspace add --ignore-scripts --registry=https://registry.npmjs.org "@tiangong-lca/cli@${MODEL_CLI_VERSION}")
+          python scripts/qualify_model_cli.py --cli cli-consumer/node_modules/@tiangong-lca/cli/bin/tiangong-lca.js --package model-package --input qualification/input-3.json --version "$MODEL_CLI_VERSION" --output qualification/cli-qualification.json
       - name: Assemble public release assets
         shell: bash
         env:
@@ -105,6 +120,7 @@ jobs:
           tar -czf "release-assets/model-runtime-${MODEL_PLATFORM}.tar.gz" -C model-package manifest.json runtime.tar.gz
           cp release-sources/sources.tar.gz "release-assets/model-runtime-${MODEL_PLATFORM}-sources.tar.gz"
           cp qualification/qualification.json "release-assets/model-runtime-${MODEL_PLATFORM}-qualification.json"
+          cp qualification/cli-qualification.json "release-assets/model-runtime-${MODEL_PLATFORM}-cli-qualification.json"
           python -c 'import json,os,pathlib; p=pathlib.Path("release-assets")/ ("model-runtime-"+os.environ["MODEL_PLATFORM"]+"-provenance.json"); p.write_text(json.dumps({"repository":os.environ["GITHUB_REPOSITORY"],"commit":os.environ["GITHUB_SHA"],"workflow":os.environ["GITHUB_WORKFLOW_REF"],"run":os.environ["GITHUB_SERVER_URL"]+"/"+os.environ["GITHUB_REPOSITORY"]+"/actions/runs/"+os.environ["GITHUB_RUN_ID"],"platform":os.environ["MODEL_PLATFORM"],"methodCacheCommit":"69753a4bc9a42649dc6f8d42f430e6a785d10ae2"},indent=2)+"\n")'
       - name: Preserve qualified packages and source evidence
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -139,7 +155,7 @@ jobs:
             gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "model-runtime-${platform}-qualification" --dir "downloads/${platform}"
             cp "downloads/${platform}/"* assets/
           done
-          python3 scripts/verify_model_release_assets.py --directory assets --commit "$GITHUB_SHA"
+          python3 scripts/verify_model_release_assets.py --directory assets --commit "$GITHUB_SHA" --cli-version "$MODEL_CLI_VERSION"
           (cd assets && sha256sum * > SHA256SUMS)
           gh release create "$tag" assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Local Model runtime ${version}" --notes "Installable local Model runtimes for macOS ARM64, Linux glibc 2.39+ x64/ARM64 and Windows x64. Extract the matching runtime archive and use tiangong-lca setup model-calculation --install <directory>. Corresponding source, notices, native numerical qualification, provenance receipts and SHA256SUMS accompany every platform. This release does not enable hosted computation." --draft
           gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest

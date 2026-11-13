@@ -111,14 +111,22 @@ def windows_sources(vcpkg, source, notices):
     for file in ['LICENSE.txt', 'vcpkg.json', 'bootstrap-vcpkg.bat']:
         if (vcpkg / file).is_file():
             shutil.copy2(vcpkg / file, source / file)
-    # Microsoft redistributable files remain governed by the installed VS license.
-    vs = Path(os.environ['VSINSTALLDIR'])
-    candidates = list(vs.glob('Licenses/**/license.txt')) + list(vs.glob('license.txt'))
-    if not candidates:
-        raise ValueError('Visual Studio redistribution license is missing')
-    for index, file in enumerate(candidates):
-        shutil.copy2(file, notices / f'microsoft-visual-studio-{index}-license.txt')
-    return [dict(vcpkgCommit=run('git', '-C', str(vcpkg), 'rev-parse', 'HEAD'))]
+    # Hosted VS images do not necessarily retain a local license.txt. Preserve
+    # Microsoft's public component terms and redistribution list, never invent one.
+    if not os.environ.get('VisualStudioVersion', '').startswith('18.'):
+        raise ValueError('Review Microsoft component terms for this Visual Studio generation')
+    documents = {
+        'microsoft-vc-runtime-license.docx': 'https://visualstudio.microsoft.com/wp-content/uploads/2025/10/Visual-C-V14-License-Redistributable_and_Runtime_ENU.docx',
+        'microsoft-build-tools-license.docx': 'https://visualstudio.microsoft.com/wp-content/uploads/2025/10/Visual_Studio_2026-License-Diagnostic_and_Build_Tools_ENU.docx',
+        'microsoft-redistribution.html': 'https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution',
+    }
+    for name, url in documents.items():
+        with urllib.request.urlopen(url, timeout=120) as response:
+            (notices / name).write_bytes(response.read())
+    return [dict(vcpkgCommit=run('git', '-C', str(vcpkg), 'rev-parse', 'HEAD'),
+                 visualStudioVersion=os.environ.get('VisualStudioVersion'),
+                 vcToolsVersion=os.environ.get('VCToolsVersion'), microsoftTerms=documents)]
+
 
 
 def main():

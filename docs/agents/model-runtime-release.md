@@ -49,15 +49,22 @@ native source archives and build recipes. Linux uses the installed packages'
 exact source versions and includes the common license texts referenced by Debian
 copyright notices; macOS refuses an installed formula/source recipe mismatch;
 Windows carries the pinned vcpkg recipes, downloaded sources, component notices
-and installed Visual Studio license. The source archive and `components.json`
+and Microsoft-published runtime/Build Tools license terms and redistribution list. The source archive and `components.json`
 retain the component licenses and versions; component licenses remain in force.
 
-Each platform publishes four assets:
+Each platform also installs the selected public CLI version with Node 24.19.0,
+uses isolated state outside the source checkout to install the package, prepares
+a Model, calculates both demands, reads all result kinds and renders an HTML
+report. Both engine and installed-consumer checks must pass.
+
+Each platform publishes five assets:
 
 - `model-runtime-<platform>.tar.gz`: outer package containing `manifest.json` and
   `runtime.tar.gz`, ready for CLI installation after extraction.
 - `model-runtime-<platform>-sources.tar.gz`: corresponding sources and notices.
 - `model-runtime-<platform>-qualification.json`: actual native numerical receipt.
+- `model-runtime-<platform>-cli-qualification.json`: public installed CLI operations
+  and numerical/report verification.
 - `model-runtime-<platform>-provenance.json`: source, workflow run, host and method
   cache identity. This is a workflow receipt, not a signed attestation.
 
