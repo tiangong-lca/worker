@@ -10,7 +10,7 @@ import tempfile
 
 
 def qualify(cli, package, input_file, version, output):
-    installed = json.loads((cli.parent.parent / 'package.json').read_text())
+    installed = json.loads((cli.parent.parent / 'package.json').read_text(encoding='utf-8'))
     if installed['name'] != '@tiangong-lca/cli' or installed['version'] != version:
         raise ValueError('Public CLI version does not match the selected release consumer')
     with tempfile.TemporaryDirectory(prefix='model-cli-consumer-') as directory:
@@ -20,7 +20,7 @@ def qualify(cli, package, input_file, version, output):
 
         def invoke(*args):
             response = subprocess.run(['node', str(cli), *args, '--json'], cwd=work,
-                                      env=env, capture_output=True, text=True, timeout=180)
+                                      env=env, capture_output=True, text=True, encoding='utf-8', timeout=180)
             if response.returncode:
                 raise ValueError(f'Installed CLI failed: {response.stdout} {response.stderr}')
             value = json.loads(response.stdout)
@@ -31,7 +31,7 @@ def qualify(cli, package, input_file, version, output):
 
         invoke('setup', 'model-calculation', '--install', str(package))
         invoke('setup', 'model-calculation', '--check')
-        original = json.loads(input_file.read_text())
+        original = json.loads(input_file.read_text(encoding='utf-8'))
         request = {k: v for k, v in original.items() if k != 'schemaVersion'}
         request['model'] = {'content': request['model']}
         request['datasets'] = [{'content': value} for value in request['datasets']]
@@ -39,13 +39,13 @@ def qualify(cli, package, input_file, version, output):
         invoke('dataset', 'model', 'prepare', '--input', str(work / 'request.json'), '--output', str(work / 'input.json'))
         facts = []
         for amount in (3, 6):
-            document = json.loads((work / 'input.json').read_text())
+            document = json.loads((work / 'input.json').read_text(encoding='utf-8'))
             document['amount'] = amount
             source = work / f'input-{amount}.json'
             source.write_text(json.dumps(document))
             run = work / f'run-{amount}'
             invoke('dataset', 'model', 'calculate', '--file', str(source), '--output-dir', str(run))
-            result = json.loads((run / 'result.json').read_text())
+            result = json.loads((run / 'result.json').read_text(encoding='utf-8'))
             if len(result['h']) != 1 or not math.isclose(result['h'][0], amount * 7, rel_tol=1e-12):
                 raise ValueError('Installed CLI disagrees with the independent numerical oracle')
             invoke('calculation', 'get', '--dir', str(run))
@@ -58,7 +58,7 @@ def qualify(cli, package, input_file, version, output):
                   'limitations': ['Synthetic qualification model; not a product study.']}
         (work / 'report.json').write_text(json.dumps(report))
         invoke('report', 'render', '--input', str(work / 'report.json'), '--output', str(work / 'report.html'))
-        html = (work / 'report.html').read_text()
+        html = (work / 'report.html').read_text(encoding='utf-8')
         if '<html' not in html or not all(str(int(value)) in html for value in facts):
             raise ValueError('HTML report is missing computed results')
         receipt = dict(status='passed', cliVersion=version, isolatedState=True,
