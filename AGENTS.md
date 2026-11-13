@@ -43,7 +43,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 12378534d9b8d460855d854dc9d65c328f98382f
+lastReviewedCommit: 28c170608d5a1cac46d0f16365ab40cf9a87be86
 lastReviewedNote: "Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged."
 related:
   - .docpact/config.yaml

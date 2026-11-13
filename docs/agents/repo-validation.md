@@ -42,7 +42,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: a65ac1856d952a03f3364924dd9e3929675f9af6
+lastReviewedCommit: 28c170608d5a1cac46d0f16365ab40cf9a87be86
 lastReviewedNote: "Worker #374: reviewed background reference identity validation and ordinary conversion regressions; hosted contracts and numerical solver are unchanged."
 related:
   - ../../AGENTS.md
