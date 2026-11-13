@@ -829,6 +829,8 @@ rules:
     scope: repo
     repo: worker
     triggers:
+      - path: .gitattributes
+        kind: native-runtime-checkout-bytes
       - path: docs/agents/model-runtime-release.md
         kind: native-runtime-release-guide
       - path: .github/workflows/model-runtime.yml

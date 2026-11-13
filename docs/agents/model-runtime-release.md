@@ -43,6 +43,10 @@ directory and checks independent numerical expectations of 21 and 42. These are
 synthetic two-process qualification cases using actual factors, not scientific
 validation of a user's research. A failed platform prevents the entire release.
 
+The embedded reviewed LCIA manifest retains exact Git bytes on every host through
+`.gitattributes`; Windows newline conversion must not change its content identity.
+Packaged-engine self-check failures retain the native diagnostic in the job log.
+
 Release collection requires Python 3.12 or newer. Corresponding source includes
 the exact Worker tree, locked vendored Rust dependencies and their notices,
 native source archives and build recipes. Linux uses the installed packages'

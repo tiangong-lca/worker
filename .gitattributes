@@ -1,0 +1,2 @@
+# This manifest is embedded and verified by its exact reviewed bytes.
+crates/solver-worker/src/lcia_static_cache_bundle_manifest.json -text

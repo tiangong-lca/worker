@@ -150,6 +150,17 @@ def publish(package, output):
         raise
 
 
+def check_engine(engine, cache, work):
+    response = subprocess.run(
+        [str(engine), "--check", "--static-cache", str(cache)],
+        capture_output=True, text=True, encoding="utf-8", timeout=120,
+        cwd=work, env=runtime_environment())
+    if response.returncode:
+        raise ValueError(f"Packaged engine self-check failed ({response.returncode}): "
+                         f"{response.stdout} {response.stderr}")
+    return json.loads(response.stdout)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine", type=Path, required=True)
@@ -187,10 +198,7 @@ def main():
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(args.static_cache / name, destination)
         # The real native loader checks the complete method/cache contract before packaging.
-        capability = json.loads(subprocess.run(
-            [str(engine), "--check", "--static-cache", str(root / "cache")],
-            check=True, capture_output=True, text=True, timeout=120,
-            cwd=work, env=runtime_environment()).stdout)
+        capability = check_engine(engine, root / "cache", work)
         if capability.get("status") != "ready" or capability.get("characterization") != "method-defined-sparse":
             raise ValueError("Engine lacks the required local Model capability")
         package = work / "package"
