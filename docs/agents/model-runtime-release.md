@@ -36,7 +36,8 @@ with `publish=false` first. Publication requires a reviewed Main commit and an
 explicit dispatch with `publish=true`; all four native jobs must succeed before
 the single publication job can create `model-runtime-v<version>`.
 
-Each native job packages its own binary, native dependencies and the pinned LCIA
+Each native job builds with Cargo’s optimized release profile and packages its
+own binary, native dependencies and the pinned LCIA
 cache, removes developer library search paths, extracts the package into a new
 directory and checks independent numerical expectations of 21 and 42. These are
 synthetic two-process qualification cases using actual factors, not scientific
@@ -45,7 +46,8 @@ validation of a user's research. A failed platform prevents the entire release.
 Release collection requires Python 3.12 or newer. Corresponding source includes
 the exact Worker tree, locked vendored Rust dependencies and their notices,
 native source archives and build recipes. Linux uses the installed packages'
-exact source versions; macOS refuses an installed formula/source recipe mismatch;
+exact source versions and includes the common license texts referenced by Debian
+copyright notices; macOS refuses an installed formula/source recipe mismatch;
 Windows carries the pinned vcpkg recipes, downloaded sources, component notices
 and installed Visual Studio license. The source archive and `components.json`
 retain the component licenses and versions; component licenses remain in force.

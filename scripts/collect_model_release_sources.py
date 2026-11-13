@@ -34,6 +34,8 @@ def libraries(engine):
 
 
 def linux_sources(engine, source, notices):
+    # Debian copyright files refer to these texts; carry them with the binaries.
+    shutil.copytree('/usr/share/common-licenses', notices / 'debian-common-licenses')
     packages = set()
     for name, path in linux_dependencies(run('ldd', str(engine))).items():
         if Path(name).name in LINUX_SYSTEM:

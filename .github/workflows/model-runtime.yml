@@ -60,9 +60,9 @@ jobs:
         run: |
           set -euo pipefail
           PYTHONPATH=scripts python3 -m unittest scripts/test_package_model_runtime.py scripts/test_verify_model_release_assets.py
-          cargo build --locked --bin model_calculate
-          python3 scripts/collect_model_release_sources.py --engine target/debug/model_calculate --output release-sources
-          python3 scripts/package_model_runtime.py --engine target/debug/model_calculate --static-cache method-cache/public --output model-package --notices release-sources/notices
+          cargo build --release --locked --bin model_calculate
+          python3 scripts/collect_model_release_sources.py --engine target/release/model_calculate --output release-sources
+          python3 scripts/package_model_runtime.py --engine target/release/model_calculate --static-cache method-cache/public --output model-package --notices release-sources/notices
           mkdir installed
           tar -xzf model-package/runtime.tar.gz -C installed
           python3 scripts/qualify_model_runtime.py --engine installed/bin/model_calculate --static-cache installed/cache --output qualification
@@ -87,11 +87,11 @@ jobs:
           $env:SUITESPARSE_LIB_DIR = Join-Path $native 'lib'
           $env:PYTHONPATH = 'scripts'
           python -m unittest scripts/test_package_model_runtime.py scripts/test_verify_model_release_assets.py
-          cargo build --locked --bin model_calculate
+          cargo build --release --locked --bin model_calculate
           $crt = Get-ChildItem (Join-Path $env:VCToolsRedistDir 'x64') -Directory -Filter 'Microsoft.VC*.CRT'
           if ($crt.Count -ne 1) { throw 'Expected one x64 MSVC redistributable directory' }
-          python scripts/collect_model_release_sources.py --engine target/debug/model_calculate.exe --output release-sources --vcpkg native-vcpkg
-          python scripts/package_model_runtime.py --engine target/debug/model_calculate.exe --library-dir "$native\bin" --library-dir $crt.FullName --static-cache method-cache/public --output model-package --notices release-sources/notices
+          python scripts/collect_model_release_sources.py --engine target/release/model_calculate.exe --output release-sources --vcpkg native-vcpkg
+          python scripts/package_model_runtime.py --engine target/release/model_calculate.exe --library-dir "$native\bin" --library-dir $crt.FullName --static-cache method-cache/public --output model-package --notices release-sources/notices
           New-Item -ItemType Directory installed
           tar -xzf model-package/runtime.tar.gz -C installed
           python scripts/qualify_model_runtime.py --engine installed/bin/model_calculate.exe --static-cache installed/cache --output qualification
